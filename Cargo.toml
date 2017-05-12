@@ -14,3 +14,7 @@ fps_counter = "0.2"
 nphysics2d = "0.6"
 ncollide = "0.11"
 nalgebra = "0.11"
+
+[dependencies.conrod]
+version = "0.52"
+features = ["piston"]

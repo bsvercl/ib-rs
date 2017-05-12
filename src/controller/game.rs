@@ -1,17 +1,266 @@
-use piston_window::{Context, G2d};
+use std::cell::RefCell;
+use std::rc::Rc;
+
+use piston_window::{Context, G2d, Key, MouseButton};
+use piston_window::types::Color;
+
+use nphysics2d::detection::joint::{Anchor, Fixed};
+use nphysics2d::object::{RigidBody, RigidBodyHandle, WorldObject};
+use nphysics2d::world::World;
+use ncollide;
+use ncollide::world::CollisionGroups;
+use na;
 
 use super::Controller;
 
-pub struct Game {}
+use camera::Camera;
+use draw::Draw;
+use object::{Ball, Cuboid};
+
+#[derive(Copy, Clone, PartialEq)]
+#[allow(dead_code)]
+enum Action {
+    CreatingBall,
+    CreatingCuboid,
+    CreatingTriangle,
+    CreatingFixedJoint,
+
+    Rotating,
+    Paste,
+
+    BoxSelecting,
+
+    CreatingText,
+    ResizingText,
+
+    None,
+}
+
+pub struct Game {
+    world: World<f64>,
+    draw: Draw,
+    camera: Camera,
+
+    balls: Vec<Ball>,
+    cuboids: Vec<Cuboid>,
+
+    grabbed_object: Option<RigidBodyHandle<f64>>,
+    grabbed_object_joint: Option<Rc<RefCell<Fixed<f64>>>>,
+    mouse_position: na::Vector2<f64>,
+
+    current_action: Action,
+
+    move_camera_up: bool,
+    move_camera_down: bool,
+    move_camera_left: bool,
+    move_camera_right: bool,
+}
 
 impl Game {
     pub fn new() -> Self {
-        Game {}
+        let mut world = World::new();
+        world.set_gravity(na::Vector2::new(0.0, 9.81));
+
+        let mut rb = RigidBody::new_static(ncollide::shape::Plane::new(na::Vector2::new(-1.0,
+                                                                                        -1.0)),
+                                           0.3,
+                                           0.6);
+        rb.append_translation(&na::Translation2::new(0.0, 10.0));
+        world.add_rigid_body(rb);
+
+        let mut rb = RigidBody::new_static(ncollide::shape::Plane::new(na::Vector2::new(1.0,
+                                                                                        -1.0)),
+                                           0.3,
+                                           0.6);
+        rb.append_translation(&na::Translation2::new(0.0, 10.0));
+        world.add_rigid_body(rb);
+
+        let mut game = Game {
+            world: world,
+            draw: Draw::new(),
+            camera: Camera::new(512.0, 512.0, 1.0),
+
+            balls: vec![],
+            cuboids: vec![],
+
+            grabbed_object: None,
+            grabbed_object_joint: None,
+            mouse_position: na::zero(),
+
+            current_action: Action::None,
+
+            move_camera_up: false,
+            move_camera_down: false,
+            move_camera_left: false,
+            move_camera_right: false,
+        };
+
+
+        let num = 5;
+        let radius = 0.5;
+        let shift = 2.5 * radius;
+        let centerx = shift * (num as f64) / 2.0;
+        let centery = shift * (num as f64) / 2.0;
+
+        for i in 0usize..num {
+            for j in 0usize..num {
+                let x = i as f64 * 2.5 * radius - centerx;
+                let y = j as f64 * 2.5 * radius - centery * 2.0 - 20.0;
+
+                game.add_ball(&na::Translation2::new(x, y),
+                              radius,
+                              [1.0; 4],
+                              1.0,
+                              0.3,
+                              0.6);
+            }
+        }
+
+        game
+    }
+
+    fn trans_camera(&mut self, dt: f64) {
+        let camera_move_speed = 50.0;
+
+        let mut delta: na::Vector2<f64> = na::zero();
+
+        if self.move_camera_up {
+            delta.y = -camera_move_speed;
+        } else if self.move_camera_down {
+            delta.y = camera_move_speed;
+        }
+
+        if self.move_camera_left {
+            delta.x = -camera_move_speed;
+        } else if self.move_camera_right {
+            delta.x = camera_move_speed;
+        }
+
+        self.camera.trans(delta * dt);
+    }
+}
+
+impl Game {
+    fn add_ball(&mut self,
+                delta: &na::Translation2<f64>,
+                radius: f64,
+                color: Color,
+                density: f64,
+                restitution: f64,
+                friction: f64) {
+        let mut rb = RigidBody::new_dynamic(ncollide::shape::Ball::new(radius),
+                                            density,
+                                            restitution,
+                                            friction);
+        rb.append_translation(delta);
+        let handle = self.world.add_rigid_body(rb);
+        self.balls.push(Ball::new(radius, color, handle));
+    }
+
+    fn add_cuboid(&mut self,
+                  delta: &na::Translation2<f64>,
+                  width: f64,
+                  height: f64,
+                  color: Color,
+                  density: f64,
+                  restitution: f64,
+                  friction: f64) {
+        let mut rb =
+            RigidBody::new_dynamic(ncollide::shape::Cuboid2::new(na::Vector2::new(width, height)),
+                                   density,
+                                   restitution,
+                                   friction);
+        rb.append_translation(delta);
+        let handle = self.world.add_rigid_body(rb);
+        self.cuboids.push(Cuboid::new(width, height, color, handle));
     }
 }
 
 impl Controller for Game {
-    fn update(&mut self, _dt: f64) {}
+    fn update(&mut self, dt: f64) {
+        let timestep = 1.0 / 60.0;
+        self.world.step(timestep);
 
-    fn render(&self, _c: &Context, _g: &mut G2d) {}
+        self.trans_camera(dt);
+    }
+
+    fn render(&self, c: &Context, g: &mut G2d) {
+        for ball in &self.balls {
+            self.draw.render_ball(&ball, &self.camera, c, g);
+        }
+
+        for cuboid in &self.cuboids {
+            self.draw.render_cuboid(&cuboid, &self.camera, c, g);
+        }
+    }
+
+    fn handle_mouse_move(&mut self, x: f64, y: f64) {
+        self.mouse_position = na::Vector2::new(x, y);
+
+        let mapped_coords = self.camera.window_to_coord(self.mouse_position);
+        let mapped_point = na::Point2::new(mapped_coords.x, mapped_coords.y);
+        let attach2 = na::Isometry2::new(mapped_point.coords, 0.0);
+        if let Some(_) = self.grabbed_object {
+            let joint = self.grabbed_object_joint.as_ref().unwrap();
+            joint.borrow_mut().set_local2(attach2);
+        }
+    }
+
+    fn handle_mouse_button(&mut self, button: MouseButton, pressed: bool) {
+        if button == MouseButton::Left {
+            if pressed {
+                let mapped_coords = self.camera.window_to_coord(self.mouse_position);
+                let mapped_point = na::Point2::new(mapped_coords.x, mapped_coords.y);
+
+                for b in self.world
+                        .collision_world()
+                        .interferences_with_point(&mapped_point, &CollisionGroups::new()) {
+                    if let &WorldObject::RigidBody(ref rb) = &b.data {
+                        if rb.borrow().can_move() {
+                            self.grabbed_object = Some(rb.clone());
+                        }
+                    }
+                }
+
+                if let Some(ref b) = self.grabbed_object {
+                    if let Some(ref j) = self.grabbed_object_joint {
+                        self.world.remove_fixed(j);
+                    }
+
+                    let attach2 = na::Isometry2::new(mapped_point.coords, 0.0);
+                    let attach1 = b.borrow().position().inverse() * attach2;
+                    let anchor1 = Anchor::new(Some(b.clone()), attach1);
+                    let anchor2 = Anchor::new(None, attach2);
+                    let joint = Fixed::new(anchor1, anchor2);
+                    self.grabbed_object_joint = Some(self.world.add_fixed(joint));
+                }
+            } else {
+                if let Some(ref j) = self.grabbed_object_joint {
+                    self.world.remove_fixed(j);
+                }
+
+                self.grabbed_object = None;
+                self.grabbed_object_joint = None;
+            }
+
+        }
+    }
+
+    fn handle_mouse_scroll(&mut self, _: f64, y: f64) {
+        self.camera.zoom += y;
+    }
+
+    fn handle_key(&mut self, key: Key, pressed: bool) {
+        match key {
+            Key::W => self.move_camera_up = pressed,
+            Key::S => self.move_camera_down = pressed,
+            Key::A => self.move_camera_left = pressed,
+            Key::D => self.move_camera_right = pressed,
+            _ => (),
+        }
+    }
+
+    fn handle_resize(&mut self, width: u32, height: u32) {
+        self.camera.set_size(width as f64, height as f64);
+    }
 }
