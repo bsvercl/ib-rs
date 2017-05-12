@@ -5,7 +5,7 @@ use super::Controller;
 pub struct MainMenu {}
 
 impl Controller for MainMenu {
-    fn update(&mut self, dt: f64) {}
+    fn update(&mut self, _dt: f64) {}
 
-    fn render(&self, c: &Context, g: &mut G2d) {}
+    fn render(&self, _c: &Context, _g: &mut G2d) {}
 }

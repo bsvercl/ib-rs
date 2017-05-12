@@ -1,10 +1,8 @@
 use piston_window::{Context, G2d, Key, MouseButton};
 
-use nphysics2d::detection::joint::{Anchor, BallInSocket, Fixed};
-use nphysics2d::object::{RigidBody, RigidBodyHandle, WorldObject};
+use nphysics2d::object::RigidBody;
 use nphysics2d::world::World;
 use ncollide;
-use ncollide::world::CollisionGroups;
 use na;
 
 use controller::{self, Controller};

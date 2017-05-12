@@ -10,10 +10,7 @@ pub struct Ball {
 }
 
 impl Ball {
-    pub fn new(object: WorldObject<f64>,
-               radius: f64,
-               color: Color)
-               -> Self {
+    pub fn new(object: WorldObject<f64>, radius: f64, color: Color) -> Self {
         Ball {
             object: object,
             radius: radius,

@@ -17,6 +17,7 @@ mod object;
 
 use piston_window::{AdvancedWindow, EventLoop, PistonWindow, WindowSettings};
 use piston_window::{Button, Input, Motion};
+use piston_window::{RenderEvent, UpdateEvent};
 use sdl2_window::Sdl2Window;
 
 use app::App;
@@ -35,22 +36,22 @@ fn main() {
     let mut fps = 0;
 
     while let Some(e) = window.next() {
+        if let Some(args) = e.update_args() {
+            app.update(args.dt);
+            window.set_title(format!("fps: {}", fps));
+        }
+
+        if let Some(_) = e.render_args() {
+            window
+                .draw_2d(&e, |c, g| {
+                    piston_window::clear(color::CORNFLOWER_BLUE, g);
+                    app.render(&c, g);
+                })
+                .unwrap();
+            fps = counter.tick();
+        }
+
         match e {
-            Input::Update(args) => {
-                app.update(args.dt);
-                window.set_title(format!("fps: {}", fps));
-            }
-
-            Input::Render(_) => {
-                window
-                    .draw_2d(&e, |c, g| {
-                        piston_window::clear(color::CORNFLOWER_BLUE, g);
-                        app.render(&c, g);
-                    })
-                    .unwrap();
-                fps = counter.tick();
-            }
-
             Input::Move(Motion::MouseCursor(x, y)) => app.handle_mouse_move(x, y),
             Input::Move(Motion::MouseScroll(x, y)) => app.handle_mouse_scroll(x, y),
 

@@ -2,7 +2,6 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use piston_window::{Context, G2d, Key, MouseButton};
-use piston_window::types::Color;
 
 use rand;
 
