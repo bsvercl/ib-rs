@@ -206,7 +206,7 @@ impl Controller for Game {
     }
 
     fn handle_mouse_scroll(&mut self, _: f64, y: f64) {
-        self.camera.zoom += y;
+        self.camera.zoom += y * 0.5;
     }
 
     fn handle_key(&mut self, key: Key, pressed: bool) {
