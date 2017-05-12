@@ -1,5 +1,12 @@
 use piston_window::{Context, G2d, Key, MouseButton};
 
+use nphysics2d::detection::joint::{Anchor, BallInSocket, Fixed};
+use nphysics2d::object::{RigidBody, RigidBodyHandle, WorldObject};
+use nphysics2d::world::World;
+use ncollide;
+use ncollide::world::CollisionGroups;
+use na;
+
 use controller::{self, Controller};
 
 pub struct App {
@@ -9,7 +16,60 @@ pub struct App {
 // TODO: is there a better way to handle these?
 impl App {
     pub fn new() -> Self {
-        App { current_controller: Box::new(controller::Game::new()) }
+        let mut world = World::new();
+        world.set_gravity(na::Vector2::new(0.0, 10.0));
+
+        let rb = RigidBody::new_static(ncollide::shape::Plane2::new(na::Vector2::new(0.0, -1.0)),
+                                       0.3,
+                                       0.6);
+        world.add_rigid_body(rb);
+
+        let num = 25;
+
+        let rad = 0.5;
+
+        let shift = 2.5 * rad;
+
+        let centerx = shift * (num as f64) / 2.0;
+
+
+
+        for i in 0usize..num {
+
+            for j in i..num {
+
+                let fj = j as f64;
+
+                let fi = i as f64;
+
+                let x = (fi * shift / 2.0) + (fj - fi) * 2.5 * rad - centerx;
+
+                let y = -fi * 2.5 * rad - 0.04 - rad;
+
+
+
+                let mut rb =
+                    RigidBody::new_dynamic(ncollide::shape::Cuboid2::new(na::Vector2::new(rad -
+                                                                                          0.04,
+                                                                                          rad -
+                                                                                          0.04)),
+                                           1.0,
+                                           0.3,
+                                           0.6);
+
+
+
+                rb.append_translation(&na::Translation2::new(x, y));
+
+
+
+                world.add_rigid_body(rb);
+
+            }
+
+        }
+
+        App { current_controller: Box::new(controller::Game::new(world)) }
     }
 
     pub fn update(&mut self, dt: f64) {

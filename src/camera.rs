@@ -35,7 +35,6 @@ impl Camera {
         self.center
     }
 
-    #[allow(dead_code)]
     pub fn set_size(&mut self, width: f64, height: f64) {
         self.width = width;
         self.height = height;

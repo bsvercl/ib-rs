@@ -4,7 +4,7 @@ use std::rc::Rc;
 use piston_window::{Context, G2d, Key, MouseButton};
 use piston_window::types::Color;
 
-use nphysics2d::detection::joint::{Anchor, Fixed};
+use nphysics2d::detection::joint::{Anchor, BallInSocket, Fixed};
 use nphysics2d::object::{RigidBody, RigidBodyHandle, WorldObject};
 use nphysics2d::world::World;
 use ncollide;
@@ -57,26 +57,9 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new() -> Self {
-        let mut world = World::new();
-        world.set_gravity(na::Vector2::new(0.0, 10.0));
-
-        let mut rb = RigidBody::new_static(ncollide::shape::Plane::new(na::Vector2::new(-1.0,
-                                                                                        -1.0)),
-                                           0.3,
-                                           0.6);
-        rb.append_translation(&na::Translation2::new(0.0, 10.0));
-        world.add_rigid_body(rb);
-
-        let mut rb = RigidBody::new_static(ncollide::shape::Plane::new(na::Vector2::new(1.0,
-                                                                                        -1.0)),
-                                           0.3,
-                                           0.6);
-        rb.append_translation(&na::Translation2::new(0.0, 10.0));
-        world.add_rigid_body(rb);
-
-        let mut game = Game {
-            world: world,
+    pub fn new_empty() -> Self {
+        Game {
+            world: World::new(),
             draw: Draw::new(),
             camera: Camera::new(512.0, 512.0, 1.0),
 
@@ -93,31 +76,39 @@ impl Game {
             move_camera_down: false,
             move_camera_left: false,
             move_camera_right: false,
-        };
-
-
-        let num = 10;
-        let radius = 0.5;
-        let shift = 2.5 * radius;
-        let centerx = shift * (num as f64) / 2.0;
-        let centery = shift * (num as f64) / 2.0;
-
-        for i in 0usize..num {
-            for j in 0usize..num {
-                let x = i as f64 * 2.5 * radius - centerx;
-                let y = j as f64 * 2.5 * radius - centery * 2.0 - 20.0;
-
-                game.add_ball(&na::Translation2::new(x, y),
-                              radius,
-                              [1.0; 4],
-                              1.0,
-                              0.3,
-                              0.6);
-            }
         }
+
+    }
+
+    pub fn new(world: World<f64>) -> Self {
+        let mut game = Game::new_empty();
+        game.set_world(world);
 
         game
     }
+
+    fn set_world(&mut self, world: World<f64>) {
+        self.world = world;
+
+        for rb in self.world.rigid_bodies() {
+            let object = WorldObject::RigidBody(rb.clone());
+            let bobject = object.borrow();
+            let shape = bobject.shape().as_ref();
+            let margin = bobject.margin();
+
+            if let Some(s) = shape.as_shape::<ncollide::shape::Ball2<f64>>() {
+                self.balls
+                    .push(Ball::new(object.clone(), s.radius() + margin, [1.0; 4]));
+            } else if let Some(s) = shape.as_shape::<ncollide::shape::Cuboid2<f64>>() {
+                self.cuboids
+                    .push(Cuboid::new(object.clone(),
+                                      s.half_extents().x + margin,
+                                      s.half_extents().y + margin,
+                                      [1.0; 4]));
+            }
+        }
+    }
+
 
     fn trans_camera(&mut self, dt: f64) {
         let camera_move_speed = 50.0;
@@ -137,42 +128,6 @@ impl Game {
         }
 
         self.camera.trans(delta * dt);
-    }
-}
-
-impl Game {
-    fn add_ball(&mut self,
-                delta: &na::Translation2<f64>,
-                radius: f64,
-                color: Color,
-                density: f64,
-                restitution: f64,
-                friction: f64) {
-        let mut rb = RigidBody::new_dynamic(ncollide::shape::Ball::new(radius),
-                                            density,
-                                            restitution,
-                                            friction);
-        rb.append_translation(delta);
-        let handle = self.world.add_rigid_body(rb);
-        self.balls.push(Ball::new(radius, color, handle));
-    }
-
-    fn add_cuboid(&mut self,
-                  delta: &na::Translation2<f64>,
-                  width: f64,
-                  height: f64,
-                  color: Color,
-                  density: f64,
-                  restitution: f64,
-                  friction: f64) {
-        let mut rb =
-            RigidBody::new_dynamic(ncollide::shape::Cuboid2::new(na::Vector2::new(width, height)),
-                                   density,
-                                   restitution,
-                                   friction);
-        rb.append_translation(delta);
-        let handle = self.world.add_rigid_body(rb);
-        self.cuboids.push(Cuboid::new(width, height, color, handle));
     }
 }
 

@@ -1,22 +1,21 @@
 use piston_window::types::Color;
 
-use nphysics2d::object::RigidBodyHandle;
+use nphysics2d::object::WorldObject;
 
 #[derive(Clone)]
 pub struct Cuboid {
-    pub body: RigidBodyHandle<f64>,
+    pub object: WorldObject<f64>,
     pub width: f64,
     pub height: f64,
     pub color: Color,
 }
 
 impl Cuboid {
-    pub fn new(width: f64, height: f64, color: Color, body: RigidBodyHandle<f64>) -> Self {
-        let margin = body.borrow().margin();
+    pub fn new(object: WorldObject<f64>, width: f64, height: f64, color: Color) -> Self {
         Cuboid {
-            body: body,
-            width: width + margin,
-            height: height + margin,
+            object: object,
+            width: width,
+            height: height,
             color: color,
         }
     }
