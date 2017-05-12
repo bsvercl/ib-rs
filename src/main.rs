@@ -32,10 +32,14 @@ fn main() {
 
     let mut app = App::new();
     let mut counter = fps_counter::FPSCounter::new();
+    let mut fps = 0;
 
     while let Some(e) = window.next() {
         match e {
-            Input::Update(args) => app.update(args.dt),
+            Input::Update(args) => {
+                app.update(args.dt);
+                window.set_title(format!("fps: {}", fps));
+            }
 
             Input::Render(_) => {
                 window
@@ -44,7 +48,7 @@ fn main() {
                         app.render(&c, g);
                     })
                     .unwrap();
-                window.set_title(format!("fps: {}", counter.tick()));
+                fps = counter.tick();
             }
 
             Input::Move(Motion::MouseCursor(x, y)) => app.handle_mouse_move(x, y),

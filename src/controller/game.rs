@@ -96,7 +96,7 @@ impl Game {
         };
 
 
-        let num = 5;
+        let num = 10;
         let radius = 0.5;
         let shift = 2.5 * radius;
         let centerx = shift * (num as f64) / 2.0;

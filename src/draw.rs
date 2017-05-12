@@ -22,15 +22,15 @@ impl Draw {
             ball.color
         };
 
-        piston_window::Ellipse::new(color).draw_tri([-radius, -radius, dradius, dradius],
-                                                    &c.draw_state,
-                                                    c.trans(position.x, position.y)
-                                                        .rot_rad(body.position()
-                                                                     .rotation
-                                                                     .angle())
-                                                        .zoom(camera.zoom())
-                                                        .transform,
-                                                    g);
+        piston_window::Ellipse::new(color)
+            .resolution(16)
+            .draw_tri([-radius, -radius, dradius, dradius],
+                      &c.draw_state,
+                      c.trans(position.x, position.y)
+                          .rot_rad(body.position().rotation.angle())
+                          .zoom(camera.zoom())
+                          .transform,
+                      g);
 
     }
 
