@@ -59,7 +59,7 @@ pub struct Game {
 impl Game {
     pub fn new() -> Self {
         let mut world = World::new();
-        world.set_gravity(na::Vector2::new(0.0, 9.81));
+        world.set_gravity(na::Vector2::new(0.0, 10.0));
 
         let mut rb = RigidBody::new_static(ncollide::shape::Plane::new(na::Vector2::new(-1.0,
                                                                                         -1.0)),
