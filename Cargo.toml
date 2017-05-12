@@ -2,6 +2,7 @@
 name = "ib-rs"
 version = "0.1.0"
 authors = ["Brad Svercl <bradsvercl@gmail.com>"]
+build = "build.rs"
 
 [dependencies]
 piston_window = "0.65"
