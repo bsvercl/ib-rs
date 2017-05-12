@@ -85,6 +85,10 @@ impl Game {
         let mut game = Game::new_empty();
         game.set_world(world);
 
+        println!("Created new game with:\n\tBalls: {}\n\tCuboids: {}",
+                 game.balls.len(),
+                 game.cuboids.len());
+
         game
     }
 
