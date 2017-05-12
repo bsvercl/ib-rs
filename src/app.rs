@@ -25,28 +25,16 @@ impl App {
         world.add_rigid_body(rb);
 
         let num = 25;
-
         let rad = 0.5;
-
         let shift = 2.5 * rad;
-
         let centerx = shift * (num as f64) / 2.0;
 
-
-
         for i in 0usize..num {
-
             for j in i..num {
-
                 let fj = j as f64;
-
                 let fi = i as f64;
-
                 let x = (fi * shift / 2.0) + (fj - fi) * 2.5 * rad - centerx;
-
                 let y = -fi * 2.5 * rad - 0.04 - rad;
-
-
 
                 let mut rb =
                     RigidBody::new_dynamic(ncollide::shape::Cuboid2::new(na::Vector2::new(rad -
@@ -56,17 +44,9 @@ impl App {
                                            1.0,
                                            0.3,
                                            0.6);
-
-
-
                 rb.append_translation(&na::Translation2::new(x, y));
-
-
-
                 world.add_rigid_body(rb);
-
             }
-
         }
 
         App { current_controller: Box::new(controller::Game::new(world)) }
