@@ -4,8 +4,10 @@ use std::rc::Rc;
 use piston_window::{Context, G2d, Key, MouseButton};
 use piston_window::types::Color;
 
-use nphysics2d::detection::joint::{Anchor, BallInSocket, Fixed};
-use nphysics2d::object::{RigidBody, RigidBodyHandle, WorldObject};
+use rand;
+
+use nphysics2d::detection::joint::{Anchor, Fixed};
+use nphysics2d::object::{RigidBodyHandle, WorldObject};
 use nphysics2d::world::World;
 use ncollide;
 use ncollide::world::CollisionGroups;
@@ -98,13 +100,15 @@ impl Game {
 
             if let Some(s) = shape.as_shape::<ncollide::shape::Ball2<f64>>() {
                 self.balls
-                    .push(Ball::new(object.clone(), s.radius() + margin, [1.0; 4]));
+                    .push(Ball::new(object.clone(),
+                                    s.radius() + margin,
+                                    [rand::random(), rand::random(), rand::random(), 1.0]));
             } else if let Some(s) = shape.as_shape::<ncollide::shape::Cuboid2<f64>>() {
                 self.cuboids
                     .push(Cuboid::new(object.clone(),
                                       s.half_extents().x + margin,
                                       s.half_extents().y + margin,
-                                      [1.0; 4]));
+                                      [rand::random(), rand::random(), rand::random(), 1.0]));
             }
         }
     }
