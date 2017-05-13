@@ -19,14 +19,13 @@ impl Draw {
 
         piston_window::Ellipse::new(ball.color)
             .resolution(16)
-            .draw_tri([-radius, -radius, dradius, dradius],
-                      &c.draw_state,
-                      c.trans(position.x, position.y)
-                          .rot_rad(transform.rotation.angle())
-                          .zoom(camera.zoom())
-                          .transform,
-                      g);
-
+            .draw([-radius, -radius, dradius, dradius],
+                  &c.draw_state,
+                  c.trans(position.x, position.y)
+                      .rot_rad(transform.rotation.angle())
+                      .zoom(camera.zoom())
+                      .transform,
+                  g);
     }
 
     pub fn render_cuboid(&self, cuboid: &Cuboid, camera: &Camera, c: &Context, g: &mut G2d) {
@@ -38,15 +37,14 @@ impl Draw {
         let height = cuboid.height;
         let dheight = height * 2.0;
 
-        piston_window::Rectangle::new(cuboid.color).draw_tri([-width, -height, dwidth, dheight],
-                                                             &c.draw_state,
-                                                             c.trans(position.x, position.y)
-                                                                 .rot_rad(transform
-                                                                              .rotation
-                                                                              .angle())
-                                                                 .zoom(camera.zoom())
-                                                                 .transform,
-                                                             g);
-
+        piston_window::Rectangle::new(cuboid.color).draw([-width, -height, dwidth, dheight],
+                                                         &c.draw_state,
+                                                         c.trans(position.x, position.y)
+                                                             .rot_rad(transform
+                                                                          .rotation
+                                                                          .angle())
+                                                             .zoom(camera.zoom())
+                                                             .transform,
+                                                         g);
     }
 }
