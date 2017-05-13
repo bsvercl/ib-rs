@@ -6,7 +6,7 @@ use piston_window::{Context, G2d, Key, MouseButton};
 use rand;
 
 use nphysics2d::detection::joint::{Anchor, Fixed};
-use nphysics2d::object::{RigidBodyHandle, WorldObject};
+use nphysics2d::object::{RigidBody, RigidBodyHandle, WorldObject};
 use nphysics2d::world::World;
 use ncollide;
 use ncollide::world::CollisionGroups;
@@ -50,6 +50,8 @@ pub struct Game {
     mouse_position: na::Vector2<f64>,
 
     current_action: Action,
+    action_step: i32,
+    first_click: na::Vector2<f64>,
 
     move_camera_up: bool,
     move_camera_down: bool,
@@ -72,6 +74,8 @@ impl Game {
             mouse_position: na::zero(),
 
             current_action: Action::None,
+            action_step: 0,
+            first_click: na::zero(),
 
             move_camera_up: false,
             move_camera_down: false,
@@ -116,7 +120,6 @@ impl Game {
         }
     }
 
-
     fn trans_camera(&mut self, dt: f64) {
         let camera_move_speed = 50.0;
 
@@ -153,6 +156,11 @@ impl Controller for Game {
 
         for cuboid in &self.cuboids {
             self.draw.render_cuboid(&cuboid, &self.camera, c, g);
+        }
+
+        if self.current_action == Action::CreatingBall && self.action_step == 1 {
+            self.draw
+                .render_temp_ball(self.first_click, self.mouse_position, &self.camera, c, g);
         }
     }
 
@@ -205,6 +213,40 @@ impl Controller for Game {
                 self.grabbed_object_joint = None;
             }
 
+            if self.current_action == Action::CreatingBall {
+                if pressed && self.action_step == 0 {
+                    self.first_click = self.mouse_position;
+                    self.action_step += 1;
+                } else if !pressed && self.action_step == 1 {
+                    let first_click = self.camera.window_to_coord(self.first_click);
+                    let mapped_first_click = na::Point2::new(first_click.x, first_click.y);
+                    let mouse_position = self.camera.window_to_coord(self.mouse_position);
+                    let mapped_mouse_position = na::Point2::new(mouse_position.x, mouse_position.y);
+
+                    let radius = na::distance(&mapped_first_click, &mapped_mouse_position);
+                    let radius = if radius < 0.1 {
+                        0.1
+                    } else if radius > 10.0 {
+                        10.0
+                    } else {
+                        radius
+                    };
+                    if radius > 0.0 {
+                        self.current_action = Action::None;
+
+                        let pos = self.camera.window_to_coord(self.first_click);
+
+                        let ball = ncollide::shape::Ball2::new(radius);
+                        let mut rb = RigidBody::new_dynamic(ball, 1.0, 0.3, 0.6);
+                        rb.append_translation(&na::Translation2::new(pos.x, pos.y));
+                        let handle = self.world.add_rigid_body(rb);
+                        self.balls
+                            .push(Ball::new(WorldObject::RigidBody(handle.clone()),
+                                            radius,
+                                            [1.0; 4]));
+                    }
+                }
+            }
         }
     }
 
@@ -218,6 +260,12 @@ impl Controller for Game {
             Key::S => self.move_camera_down = pressed,
             Key::A => self.move_camera_left = pressed,
             Key::D => self.move_camera_right = pressed,
+
+            Key::D1 if pressed => {
+                self.current_action = Action::CreatingBall;
+                self.action_step = 0;
+            }
+
             _ => (),
         }
     }

@@ -1,5 +1,7 @@
 use piston_window::{self, Context, G2d, Transformed};
 
+use na;
+
 use camera::Camera;
 use object::{Ball, Cuboid};
 
@@ -8,6 +10,34 @@ pub struct Draw {}
 impl Draw {
     pub fn new() -> Self {
         Draw {}
+    }
+
+    pub fn render_temp_ball(&self,
+                            first_click: na::Vector2<f64>,
+                            mouse_position: na::Vector2<f64>,
+                            camera: &Camera,
+                            c: &Context,
+                            g: &mut G2d) {
+        let mapped_first_click = na::Point2::new(first_click.x, first_click.y);
+        let mapped_mouse_position = na::Point2::new(mouse_position.x, mouse_position.y);
+        let radius = na::distance(&mapped_first_click, &mapped_mouse_position);
+        let radius = if radius < 0.1 {
+            0.1
+        } else if radius > 10.0 {
+            10.0
+        } else {
+            radius
+        };
+        let dradius = radius * 2.0;
+
+        piston_window::Ellipse::new([1.0; 4])
+            .resolution(16)
+            .draw([-radius, -radius, dradius, dradius],
+                  &c.draw_state,
+                  c.trans(first_click.x, first_click.y)
+                      .zoom(camera.zoom())
+                      .transform,
+                  g);
     }
 
     pub fn render_ball(&self, ball: &Ball, camera: &Camera, c: &Context, g: &mut G2d) {

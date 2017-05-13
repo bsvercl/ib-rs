@@ -17,15 +17,15 @@ pub struct App {
 impl App {
     pub fn new() -> Self {
         let mut world = World::new();
-        world.set_gravity(na::Vector2::new(0.0, 10.0));
+        world.set_gravity(na::Vector2::new(0.0, 15.0));
 
         let rb = RigidBody::new_static(ncollide::shape::Plane2::new(na::Vector2::new(0.0, -1.0)),
                                        0.3,
                                        0.6);
         world.add_rigid_body(rb);
 
-        let num = 85;
-        let rad = 0.5;
+        let num = 35;
+        let rad = 10.0;
         let shift = 2.5 * rad;
         let centerx = shift * (num as f64) / 2.0;
 
@@ -52,7 +52,7 @@ impl App {
             }
         }
 
-        App { current_controller: Box::new(controller::Game::new(world)) }
+        App { current_controller: Box::new(controller::Game::new_empty()) }
     }
 
     pub fn update(&mut self, dt: f64) {
