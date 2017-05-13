@@ -1,4 +1,4 @@
-use piston_window::types::Color;
+use graphics::types::Color;
 
 use nphysics2d::object::WorldObject;
 

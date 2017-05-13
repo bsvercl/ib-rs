@@ -1,5 +1,7 @@
-extern crate piston_window;
-extern crate sdl2_window;
+extern crate piston;
+extern crate graphics;
+extern crate opengl_graphics;
+extern crate glutin_window;
 
 extern crate rand;
 extern crate fps_counter;
@@ -15,43 +17,44 @@ mod draw;
 mod color;
 mod object;
 
-use piston_window::{AdvancedWindow, EventLoop, PistonWindow, WindowSettings};
-use piston_window::{Button, Input, Motion};
-use piston_window::{RenderEvent, UpdateEvent};
-use sdl2_window::Sdl2Window;
+use piston::event_loop::{Events, EventSettings};
+use piston::input::{Button, Input, Motion};
+use piston::window::{AdvancedWindow, WindowSettings};
+use opengl_graphics::{GlGraphics, OpenGL};
+use glutin_window::GlutinWindow;
 
 use app::App;
 
 fn main() {
-    let mut window: PistonWindow<Sdl2Window> = WindowSettings::new("", [512, 512])
-        .vsync(true)
+    let opengl = OpenGL::V3_2;
+
+    let mut window: GlutinWindow = WindowSettings::new("", [800, 600])
+        .opengl(opengl)
         .build()
         .unwrap();
-
-    // set max updates to 60 for nphysics
-    window.set_ups(60);
 
     let mut app = App::new();
     let mut counter = fps_counter::FPSCounter::new();
     let mut fps = 0;
 
-    while let Some(e) = window.next() {
-        if let Some(args) = e.update_args() {
-            app.update(args.dt);
-            window.set_title(format!("fps: {}", fps));
-        }
+    let mut gl = GlGraphics::new(opengl);
 
-        if let Some(_) = e.render_args() {
-            window
-                .draw_2d(&e, |c, g| {
-                    piston_window::clear(color::CORNFLOWER_BLUE, g);
-                    app.render(&c, g);
-                })
-                .unwrap();
-            fps = counter.tick();
-        }
-
+    let mut events = Events::new(EventSettings::new());
+    while let Some(e) = events.next(&mut window) {
         match e {
+            Input::Update(args) => {
+                app.update(args.dt);
+                window.set_title(format!("fps: {}", fps));
+            }
+
+            Input::Render(args) => {
+                gl.draw(args.viewport(), |c, g| {
+                    graphics::clear(color::CORNFLOWER_BLUE, g);
+                    app.render(&c, g);
+                });
+                fps = counter.tick();
+            }
+
             Input::Move(Motion::MouseCursor(x, y)) => app.handle_mouse_move(x, y),
             Input::Move(Motion::MouseScroll(x, y)) => app.handle_mouse_scroll(x, y),
 

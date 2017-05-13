@@ -1,4 +1,4 @@
-use piston_window::types::Color;
+use graphics::types::Color;
 
 macro_rules! make_color {
     ($r:expr, $g:expr, $b:expr, $a:expr) => (

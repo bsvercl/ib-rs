@@ -1,4 +1,6 @@
-use piston_window::{Context, G2d, Key, MouseButton};
+use piston::input::{Key, MouseButton};
+use graphics::Context;
+use opengl_graphics::GlGraphics;
 
 use rand::{self, Rng};
 
@@ -24,7 +26,7 @@ impl App {
                                        0.6);
         world.add_rigid_body(rb);
 
-        let num = 35;
+        let num = 25;
         let rad = 10.0;
         let shift = 2.5 * rad;
         let centerx = shift * (num as f64) / 2.0;
@@ -52,14 +54,14 @@ impl App {
             }
         }
 
-        App { current_controller: Box::new(controller::Game::new_empty()) }
+        App { current_controller: Box::new(controller::Game::new(world)) }
     }
 
     pub fn update(&mut self, dt: f64) {
         self.current_controller.update(dt);
     }
 
-    pub fn render(&self, c: &Context, g: &mut G2d) {
+    pub fn render(&self, c: &Context, g: &mut GlGraphics) {
         self.current_controller.render(c, g);
     }
 
