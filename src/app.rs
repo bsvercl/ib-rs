@@ -1,5 +1,7 @@
 use piston_window::{Context, G2d, Key, MouseButton};
 
+use rand::{self, Rng};
+
 use nphysics2d::object::RigidBody;
 use nphysics2d::world::World;
 use ncollide;
@@ -22,7 +24,7 @@ impl App {
                                        0.6);
         world.add_rigid_body(rb);
 
-        let num = 55;
+        let num = 85;
         let rad = 0.5;
         let shift = 2.5 * rad;
         let centerx = shift * (num as f64) / 2.0;
@@ -34,14 +36,17 @@ impl App {
                 let x = (fi * shift / 2.0) + (fj - fi) * 2.5 * rad - centerx;
                 let y = -fi * 2.5 * rad - 0.04 - rad;
 
-                let mut rb =
+                let mut rb = if rand::thread_rng().gen_range(0, 5) == 3 {
                     RigidBody::new_dynamic(ncollide::shape::Cuboid2::new(na::Vector2::new(rad -
                                                                                           0.04,
                                                                                           rad -
                                                                                           0.04)),
                                            1.0,
                                            0.3,
-                                           0.6);
+                                           0.6)
+                } else {
+                    RigidBody::new_dynamic(ncollide::shape::Ball2::new(rad - 0.04), 1.0, 0.3, 0.6)
+                };
                 rb.append_translation(&na::Translation2::new(x, y));
                 world.add_rigid_body(rb);
             }
