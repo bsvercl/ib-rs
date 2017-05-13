@@ -19,14 +19,14 @@ pub struct App {
 impl App {
     pub fn new() -> Self {
         let mut world = World::new();
-        world.set_gravity(na::Vector2::new(0.0, 15.0));
+        world.set_gravity(na::Vector2::new(0.0, 30.0));
 
         let rb = RigidBody::new_static(ncollide::shape::Plane2::new(na::Vector2::new(0.0, -1.0)),
                                        0.3,
                                        0.6);
         world.add_rigid_body(rb);
 
-        let num = 55;
+        let num = 45;
         let rad = 10.0;
         let shift = 2.5 * rad;
         let centerx = shift * (num as f64) / 2.0;

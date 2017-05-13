@@ -13,6 +13,35 @@ impl Draw {
         Draw {}
     }
 
+    pub fn render_temp_ball_in_socket(&self,
+                                      mouse_posiiton: na::Vector2<f64>,
+                                      c: &Context,
+                                      g: &mut GlGraphics) {
+        let mapped_mouse_position = na::Point2::new(mouse_posiiton.x, mouse_posiiton.y);
+
+        let radius = 5.0;
+        let dradius = radius * 2.0;
+
+        graphics::Ellipse::new_border([0.0, 0.0, 1.0, 1.0], 0.3)
+            .resolution(16)
+            .draw([-radius, -radius, dradius, dradius],
+                  &c.draw_state,
+                  c.trans(mapped_mouse_position.x, mapped_mouse_position.y)
+                      .transform,
+                  g);
+
+        let radius = 3.0;
+        let dradius = radius * 2.0;
+
+        graphics::Ellipse::new_border([0.0, 0.0, 1.0, 1.0], 0.3)
+            .resolution(16)
+            .draw([-radius, -radius, dradius, dradius],
+                  &c.draw_state,
+                  c.trans(mapped_mouse_position.x, mapped_mouse_position.y)
+                      .transform,
+                  g);
+    }
+
     pub fn render_temp_ball(&self,
                             first_click: na::Vector2<f64>,
                             mouse_position: na::Vector2<f64>,

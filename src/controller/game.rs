@@ -27,6 +27,7 @@ enum Action {
     CreatingCuboid,
     CreatingTriangle,
     CreatingFixedJoint,
+    CreatingBallInSocket,
 
     Rotating,
     Paste,
@@ -43,6 +44,8 @@ pub struct Game {
     world: World<f64>,
     draw: Draw,
     camera: Camera,
+
+    paused: bool,
 
     balls: Vec<Ball>,
     cuboids: Vec<Cuboid>,
@@ -67,6 +70,8 @@ impl Game {
             world: World::new(),
             draw: Draw::new(),
             camera: Camera::new(800.0, 600.0),
+
+            paused: true,
 
             balls: vec![],
             cuboids: vec![],
@@ -141,12 +146,29 @@ impl Game {
 
         self.camera.trans(delta * dt);
     }
+
+    fn get_body_at_mouse(&self) -> Option<RigidBodyHandle<f64>> {
+        let mapped_coords = self.camera.window_to_coord(self.mouse_position);
+        let mapped_point = na::Point2::new(mapped_coords.x, mapped_coords.y);
+
+        for b in self.world
+                .collision_world()
+                .interferences_with_point(&mapped_point, &CollisionGroups::new()) {
+            if let &WorldObject::RigidBody(ref rb) = &b.data {
+                return Some(rb.clone());
+            }
+        }
+
+        None
+    }
 }
 
 impl Controller for Game {
     fn update(&mut self, dt: f64) {
         let timestep = 1.0 / 60.0;
-        self.world.step(timestep);
+        if !self.paused {
+            self.world.step(timestep);
+        }
 
         self.trans_camera(dt);
     }
@@ -160,22 +182,23 @@ impl Controller for Game {
             self.draw.render_cuboid(&cuboid, &self.camera, c, g);
         }
 
-        if self.action_step == 1 {
-            match self.current_action {
-                Action::CreatingBall => {
-                    self.draw
-                        .render_temp_ball(self.first_click, self.mouse_position, &self.camera, c, g)
-                }
-                Action::CreatingCuboid => {
-                    self.draw
-                        .render_temp_cuboid(self.first_click,
-                                            self.mouse_position,
-                                            &self.camera,
-                                            c,
-                                            g)
-                }
-                _ => (),
+        match self.current_action {
+            Action::CreatingBall if self.action_step == 1 => {
+                self.draw
+                    .render_temp_ball(self.first_click, self.mouse_position, &self.camera, c, g)
             }
+
+            Action::CreatingCuboid if self.action_step == 1 => {
+                self.draw
+                    .render_temp_cuboid(self.first_click, self.mouse_position, &self.camera, c, g)
+            }
+
+            Action::CreatingBallInSocket => {
+                self.draw
+                    .render_temp_ball_in_socket(self.mouse_position, c, g);
+
+            }
+            _ => {}
         }
     }
 
@@ -198,15 +221,7 @@ impl Controller for Game {
                     let mapped_coords = self.camera.window_to_coord(self.mouse_position);
                     let mapped_point = na::Point2::new(mapped_coords.x, mapped_coords.y);
 
-                    for b in self.world
-                            .collision_world()
-                            .interferences_with_point(&mapped_point, &CollisionGroups::new()) {
-                        if let &WorldObject::RigidBody(ref rb) = &b.data {
-                            if rb.borrow().can_move() {
-                                self.grabbed_object = Some(rb.clone());
-                            }
-                        }
-                    }
+                    self.grabbed_object = self.get_body_at_mouse();
 
                     if let Some(ref b) = self.grabbed_object {
                         if let Some(ref j) = self.grabbed_object_joint {
@@ -298,6 +313,8 @@ impl Controller for Game {
                                               [1.0; 4]));
                     }
                 }
+            } else if self.current_action == Action::CreatingBallInSocket {
+
             }
         }
     }
@@ -322,6 +339,15 @@ impl Controller for Game {
             Key::D2 if pressed => {
                 self.current_action = Action::CreatingCuboid;
                 self.action_step = 0;
+            }
+
+            Key::D4 if pressed => {
+                self.current_action = Action::CreatingBallInSocket;
+                self.action_step = 0;
+            }
+
+            Key::Space if pressed => {
+                self.paused = !self.paused;
             }
 
             _ => (),
