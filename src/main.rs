@@ -17,7 +17,7 @@ mod draw;
 mod color;
 mod object;
 
-use piston::event_loop::{Events, EventSettings};
+use piston::event_loop::{EventLoop, Events, EventSettings};
 use piston::input::{Button, Input, Motion};
 use piston::window::{AdvancedWindow, WindowSettings};
 use opengl_graphics::{GlGraphics, OpenGL};
@@ -30,6 +30,8 @@ fn main() {
 
     let mut window: GlutinWindow = WindowSettings::new("", [800, 600])
         .opengl(opengl)
+        .resizable(false)
+        .samples(8)
         .build()
         .unwrap();
 
@@ -39,7 +41,7 @@ fn main() {
 
     let mut gl = GlGraphics::new(opengl);
 
-    let mut events = Events::new(EventSettings::new());
+    let mut events = Events::new(EventSettings::new().ups(60));
     while let Some(e) = events.next(&mut window) {
         match e {
             Input::Update(args) => {

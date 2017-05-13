@@ -26,7 +26,7 @@ impl App {
                                        0.6);
         world.add_rigid_body(rb);
 
-        let num = 25;
+        let num = 55;
         let rad = 10.0;
         let shift = 2.5 * rad;
         let centerx = shift * (num as f64) / 2.0;

@@ -91,6 +91,10 @@ impl Game {
         let mut game = Game::new_empty();
         game.set_world(world);
 
+        println!("balls: {}, cuboids: {}",
+                 game.balls.len(),
+                 game.cuboids.len());
+
         game
     }
 
@@ -119,7 +123,7 @@ impl Game {
     }
 
     fn trans_camera(&mut self, dt: f64) {
-        let camera_move_speed = 50.0;
+        let camera_move_speed = 100.0;
 
         let mut delta: na::Vector2<f64> = na::zero();
 
