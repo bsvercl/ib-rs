@@ -2,12 +2,11 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use piston::input::{Key, MouseButton};
-use graphics::Context;
+use graphics::{self, Colored, Context, Transformed};
 use opengl_graphics::GlGraphics;
 
-use rand;
-
-use nphysics2d::detection::joint::{Anchor, Fixed};
+use nphysics2d::detection::constraint::Constraint;
+use nphysics2d::detection::joint::{Anchor, Fixed, Joint};
 use nphysics2d::object::{RigidBody, RigidBodyHandle, WorldObject};
 use nphysics2d::world::World;
 use ncollide;
@@ -17,8 +16,6 @@ use na;
 use super::Controller;
 
 use camera::Camera;
-use draw::Draw;
-use object::{Ball, Cuboid};
 
 #[derive(Copy, Clone, PartialEq)]
 #[allow(dead_code)]
@@ -42,20 +39,16 @@ enum Action {
 
 pub struct Game {
     world: World<f64>,
-    draw: Draw,
     camera: Camera,
 
     paused: bool,
-
-    balls: Vec<Ball>,
-    cuboids: Vec<Cuboid>,
 
     grabbed_object: Option<RigidBodyHandle<f64>>,
     grabbed_object_joint: Option<Rc<RefCell<Fixed<f64>>>>,
     mouse_position: na::Vector2<f64>,
 
     current_action: Action,
-    action_step: i32,
+    action_step: i8,
     first_click: na::Vector2<f64>,
 
     move_camera_up: bool,
@@ -65,16 +58,12 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new_empty() -> Self {
+    pub fn new(world: World<f64>) -> Self {
         Game {
-            world: World::new(),
-            draw: Draw::new(),
+            world: world,
             camera: Camera::new(800.0, 600.0),
 
             paused: true,
-
-            balls: vec![],
-            cuboids: vec![],
 
             grabbed_object: None,
             grabbed_object_joint: None,
@@ -90,41 +79,6 @@ impl Game {
             move_camera_right: false,
         }
 
-    }
-
-    pub fn new(world: World<f64>) -> Self {
-        let mut game = Game::new_empty();
-        game.set_world(world);
-
-        println!("balls: {}, cuboids: {}",
-                 game.balls.len(),
-                 game.cuboids.len());
-
-        game
-    }
-
-    fn set_world(&mut self, world: World<f64>) {
-        self.world = world;
-
-        for rb in self.world.rigid_bodies() {
-            let object = WorldObject::RigidBody(rb.clone());
-            let bobject = object.borrow();
-            let shape = bobject.shape().as_ref();
-            let margin = bobject.margin();
-
-            if let Some(s) = shape.as_shape::<ncollide::shape::Ball2<f64>>() {
-                self.balls
-                    .push(Ball::new(object.clone(),
-                                    s.radius() + margin,
-                                    [rand::random(), rand::random(), rand::random(), 1.0]));
-            } else if let Some(s) = shape.as_shape::<ncollide::shape::Cuboid2<f64>>() {
-                self.cuboids
-                    .push(Cuboid::new(object.clone(),
-                                      s.half_extents().x + margin,
-                                      s.half_extents().y + margin,
-                                      [rand::random(), rand::random(), rand::random(), 1.0]));
-            }
-        }
     }
 
     fn trans_camera(&mut self, dt: f64) {
@@ -173,32 +127,193 @@ impl Controller for Game {
         self.trans_camera(dt);
     }
 
-    fn render(&self, c: &Context, g: &mut GlGraphics) {
-        for ball in &self.balls {
-            self.draw.render_ball(&ball, &self.camera, c, g);
+    fn render(&mut self, c: &Context, g: &mut GlGraphics) {
+        for rb in self.world.rigid_bodies() {
+            let object = WorldObject::RigidBody(rb.clone());
+            let bobject = object.borrow();
+            let transform = bobject.position();
+            let position = self.camera.coord_to_window(transform.translation.vector);
+            let rotation = transform.rotation.angle();
+            let shape = bobject.shape().as_ref();
+            let margin = bobject.margin();
+
+            let transform = c.trans(position.x, position.y)
+                .rot_rad(rotation)
+                .zoom(self.camera.zoom())
+                .transform;
+
+            if let Some(s) = shape.as_shape::<ncollide::shape::Ball2<f64>>() {
+                let radius = s.radius() + margin;
+                let dradius = radius * 2.0;
+
+                graphics::Ellipse::new([1.0; 4])
+                    .border(graphics::ellipse::Border {
+                                color: [1.0; 4].shade(0.5),
+                                radius: 0.2,
+                            })
+                    .resolution(16)
+                    .draw([-radius, -radius, dradius, dradius],
+                          &c.draw_state,
+                          transform,
+                          g);
+            } else if let Some(s) = shape.as_shape::<ncollide::shape::Cuboid2<f64>>() {
+                let width = s.half_extents().x + margin;
+                let height = s.half_extents().y + margin;
+                let dwidth = width * 2.0;
+                let dheight = height * 2.0;
+
+                graphics::Rectangle::new([1.0; 4])
+                    .border(graphics::rectangle::Border {
+                                color: [1.0; 4].shade(0.5),
+                                radius: 0.2,
+                            })
+                    .draw([-width, -height, dwidth, dheight],
+                          &c.draw_state,
+                          transform,
+                          g);
+            }
         }
 
-        for cuboid in &self.cuboids {
-            self.draw.render_cuboid(&cuboid, &self.camera, c, g);
+        let mut collisions = vec![];
+        self.world.constraints(&mut collisions);
+
+        for collision in &collisions {
+            match *collision {
+                Constraint::RBRB(_, _, ref contact) => {
+                    let world1 = contact.world1;
+                    let world1 = self.camera
+                        .coord_to_window(na::Vector2::new(world1.x, world1.y));
+                    let world2 = contact.world2;
+                    let world2 = self.camera
+                        .coord_to_window(na::Vector2::new(world2.x, world2.y));
+                    graphics::Line::new([0.0, 1.0, 0.0, 1.0], 3.0)
+                        .draw([world1.x, world1.y, world2.x, world2.y],
+                              &c.draw_state,
+                              c.transform,
+                              g);
+
+                    let center = na::center(&na::Point2::new(world1.x, world1.y),
+                                            &na::Point2::new(world2.x, world2.y));
+                    let center_normal_depth = center + contact.normal * contact.depth;
+                    graphics::Line::new([0.0, 1.0, 0.0, 1.0], 3.0).draw([center.x,
+                                                                         center.y,
+                                                                         center_normal_depth.x,
+                                                                         center_normal_depth.y],
+                                                                        &c.draw_state,
+                                                                        c.transform,
+                                                                        g);
+
+                    let center_normal = center + contact.normal;
+                    graphics::Line::new([0.0, 1.0, 0.0, 1.0], 3.0)
+                        .draw([center.x, center.y, center_normal.x, center_normal.y],
+                              &c.draw_state,
+                              c.transform,
+                              g);
+                }
+
+                Constraint::BallInSocket(ref bis) => {
+                    let anchor1_pos = bis.borrow().anchor1_pos();
+                    let anchor1_pos =
+                        self.camera
+                            .coord_to_window(na::Vector2::new(anchor1_pos.x, anchor1_pos.y));
+                    let anchor2_pos = bis.borrow().anchor2_pos();
+                    let anchor2_pos =
+                        self.camera
+                            .coord_to_window(na::Vector2::new(anchor2_pos.x, anchor2_pos.y));
+
+                    graphics::Line::new([0.0, 0.0, 1.0, 1.0], 3.0)
+                        .draw([anchor1_pos.x, anchor1_pos.y, anchor2_pos.x, anchor2_pos.y],
+                              &c.draw_state,
+                              c.transform,
+                              g);
+                }
+
+                _ => {}
+            }
         }
 
-        match self.current_action {
-            Action::CreatingBall if self.action_step == 1 => {
-                self.draw
-                    .render_temp_ball(self.first_click, self.mouse_position, &self.camera, c, g)
-            }
+        if self.current_action != Action::None {
+            let mapped_first_click = na::Point2::new(self.first_click.x, self.first_click.y);
+            let mapped_mouse_position = na::Point2::new(self.mouse_position.x,
+                                                        self.mouse_position.y);
 
-            Action::CreatingCuboid if self.action_step == 1 => {
-                self.draw
-                    .render_temp_cuboid(self.first_click, self.mouse_position, &self.camera, c, g)
-            }
+            match self.current_action {
+                Action::CreatingBall if self.action_step == 1 => {
+                    let radius = na::distance(&mapped_first_click, &mapped_mouse_position);
+                    let radius = if radius < 0.1 {
+                        0.1
+                    } else if radius > 10.0 {
+                        10.0
+                    } else {
+                        radius
+                    };
+                    let dradius = radius * 2.0;
 
-            Action::CreatingBallInSocket => {
-                self.draw
-                    .render_temp_ball_in_socket(self.mouse_position, c, g);
+                    graphics::Ellipse::new([1.0; 4])
+                        .resolution(16)
+                        .draw([-radius, -radius, dradius, dradius],
+                              &c.draw_state,
+                              c.trans(self.first_click.x, self.first_click.y)
+                                  .zoom(self.camera.zoom())
+                                  .transform,
+                              g);
+                }
 
+                Action::CreatingCuboid if self.action_step == 1 => {
+                    let width = mapped_mouse_position.x - mapped_first_click.x;
+                    let width = if na::abs(&width) < 0.1 {
+                        if width < 0.0 { -0.1 } else { 0.1 }
+                    } else if na::abs(&width) > 10.0 {
+                        if width < 0.0 { -10.0 } else { 10.0 }
+                    } else {
+                        width
+                    };
+                    let dwidth = width * 2.0;
+
+                    let height = mapped_mouse_position.y - mapped_first_click.y;
+                    let height = if na::abs(&width) < 0.1 {
+                        if height < 0.0 { -0.1 } else { 0.1 }
+                    } else if na::abs(&height) > 10.0 {
+                        if height < 0.0 { -10.0 } else { 10.0 }
+                    } else {
+                        height
+                    };
+                    let dheight = height * 2.0;
+
+                    graphics::Rectangle::new([1.0; 4]).draw([-width, -height, dwidth, dheight],
+                                                            &c.draw_state,
+                                                            c.trans(self.first_click.x,
+                                                                    self.first_click.y)
+                                                                .zoom(self.camera.zoom())
+                                                                .transform,
+                                                            g);
+                }
+
+                Action::CreatingBallInSocket => {
+                    let radius = 5.0;
+                    let dradius = radius * 2.0;
+
+                    graphics::Ellipse::new_border([0.0, 0.0, 1.0, 1.0], 0.3)
+                        .resolution(16)
+                        .draw([-radius, -radius, dradius, dradius],
+                              &c.draw_state,
+                              c.trans(mapped_mouse_position.x, mapped_mouse_position.y)
+                                  .transform,
+                              g);
+
+                    let radius = 3.0;
+                    let dradius = radius * 2.0;
+
+                    graphics::Ellipse::new_border([0.0, 0.0, 1.0, 1.0], 0.3)
+                        .resolution(16)
+                        .draw([-radius, -radius, dradius, dradius],
+                              &c.draw_state,
+                              c.trans(mapped_mouse_position.x, mapped_mouse_position.y)
+                                  .transform,
+                              g);
+                }
+                _ => {}
             }
-            _ => {}
         }
     }
 
@@ -269,11 +384,7 @@ impl Controller for Game {
                         let ball = ncollide::shape::Ball2::new(radius);
                         let mut rb = RigidBody::new_dynamic(ball, 1.0, 0.3, 0.6);
                         rb.append_translation(&na::Translation2::new(pos.x, pos.y));
-                        let handle = self.world.add_rigid_body(rb);
-                        self.balls
-                            .push(Ball::new(WorldObject::RigidBody(handle.clone()),
-                                            radius,
-                                            [1.0; 4]));
+                        self.world.add_rigid_body(rb);
                     }
                 }
             } else if self.current_action == Action::CreatingCuboid {
@@ -305,12 +416,7 @@ impl Controller for Game {
                         let cuboid = ncollide::shape::Cuboid2::new(na::Vector2::new(width, height));
                         let mut rb = RigidBody::new_dynamic(cuboid, 1.0, 0.3, 0.6);
                         rb.append_translation(&na::Translation2::new(pos.x, pos.y));
-                        let handle = self.world.add_rigid_body(rb);
-                        self.cuboids
-                            .push(Cuboid::new(WorldObject::RigidBody(handle.clone()),
-                                              width,
-                                              height,
-                                              [1.0; 4]));
+                        self.world.add_rigid_body(rb);
                     }
                 }
             } else if self.current_action == Action::CreatingBallInSocket {

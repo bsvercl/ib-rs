@@ -13,9 +13,7 @@ extern crate nalgebra as na;
 mod app;
 mod camera;
 mod controller;
-mod draw;
 mod color;
-mod object;
 
 use piston::event_loop::{EventLoop, Events, EventSettings};
 use piston::input::{Button, Input, Motion};
