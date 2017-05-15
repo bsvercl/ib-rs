@@ -108,7 +108,7 @@ impl Game {
         for b in self.world
                 .collision_world()
                 .interferences_with_point(&mapped_point, &CollisionGroups::new()) {
-            if let &WorldObject::RigidBody(ref rb) = &b.data {
+            if let WorldObject::RigidBody(ref rb) = b.data {
                 return Some(rb.clone());
             }
         }
@@ -323,7 +323,7 @@ impl Controller for Game {
         let mapped_coords = self.camera.window_to_coord(self.mouse_position);
         let mapped_point = na::Point2::new(mapped_coords.x, mapped_coords.y);
         let attach2 = na::Isometry2::new(mapped_point.coords, 0.0);
-        if let Some(_) = self.grabbed_object {
+        if self.grabbed_object.is_some() {
             let joint = self.grabbed_object_joint.as_ref().unwrap();
             joint.borrow_mut().set_local2(attach2);
         }
@@ -391,43 +391,48 @@ impl Controller for Game {
                 if pressed && self.action_step == 0 {
                     self.first_click = self.mouse_position;
                     self.action_step += 1;
-                } else if !pressed && self.action_step == 1 {
-                    if self.mouse_position != self.first_click {
-                        self.current_action = Action::None;
+                } else if !pressed && self.action_step == 1 &&
+                          self.mouse_position != self.first_click {
+                    self.current_action = Action::None;
 
-                        let pos = self.camera.window_to_coord(self.first_click);
-                        let width = self.mouse_position.x - self.first_click.x;
-                        let width = if width < 0.1 {
-                            0.1
-                        } else if width > 10.0 {
-                            10.0
-                        } else {
-                            width
-                        };
-                        let height = self.mouse_position.y - self.first_click.y;
-                        let height = if height < 0.1 {
-                            0.1
-                        } else if height > 10.0 {
-                            10.0
-                        } else {
-                            height
-                        };
+                    let width = self.mouse_position.x - self.first_click.x;
+                    let width = if width < 0.1 {
+                        0.1
+                    } else if width > 10.0 {
+                        10.0
+                    } else {
+                        width
+                    };
+                    let height = self.mouse_position.y - self.first_click.y;
+                    let height = if height < 0.1 {
+                        0.1
+                    } else if height > 10.0 {
+                        10.0
+                    } else {
+                        height
+                    };
 
-                        let cuboid = ncollide::shape::Cuboid2::new(na::Vector2::new(width, height));
-                        let mut rb = RigidBody::new_dynamic(cuboid, 1.0, 0.3, 0.6);
-                        rb.append_translation(&na::Translation2::new(pos.x, pos.y));
-                        self.world.add_rigid_body(rb);
-                    }
+                    let pos = self.camera.window_to_coord(self.first_click);
+
+                    let cuboid = ncollide::shape::Cuboid2::new(na::Vector2::new(width, height));
+                    let mut rb = RigidBody::new_dynamic(cuboid, 1.0, 0.3, 0.6);
+                    rb.append_translation(&na::Translation2::new(pos.x, pos.y));
+                    self.world.add_rigid_body(rb);
                 }
-            } else if self.current_action == Action::CreatingBallInSocket {
-
             }
         }
     }
 
     fn handle_mouse_scroll(&mut self, _: f64, y: f64) {
-        let zoom = self.camera.zoom();
-        self.camera.set_zoom(zoom + y * 0.05);
+        if y < 0.0 {
+            let zoom = self.camera.zoom() * 3.0 / 4.0;
+            let zoom = if zoom < 12.0 { 12.0 } else { zoom };
+            self.camera.set_zoom(zoom);
+        } else {
+            let zoom = self.camera.zoom() * 4.0 / 3.0;
+            let zoom = if zoom > 75.0 { 75.0 } else { zoom };
+            self.camera.set_zoom(zoom);
+        }
     }
 
     fn handle_key(&mut self, key: Key, pressed: bool) {
@@ -454,6 +459,18 @@ impl Controller for Game {
 
             Key::Space if pressed => {
                 self.paused = !self.paused;
+            }
+
+            Key::W if pressed => {
+                let zoom = self.camera.zoom() * 4.0 / 3.0;
+                let zoom = if zoom > 75.0 { 75.0 } else { zoom };
+                self.camera.set_zoom(zoom);
+            }
+
+            Key::S if pressed => {
+                let zoom = self.camera.zoom() * 3.0 / 4.0;
+                let zoom = if zoom < 12.0 { 12.0 } else { zoom };
+                self.camera.set_zoom(zoom);
             }
 
             _ => (),
