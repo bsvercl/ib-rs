@@ -2,12 +2,9 @@ use piston::input::{Key, MouseButton};
 use graphics::Context;
 use opengl_graphics::GlGraphics;
 
-use rand::{self, Rng};
-
 use nphysics2d::detection::joint::{Anchor, BallInSocket};
 use nphysics2d::object::RigidBody;
 use nphysics2d::world::World;
-use ncollide;
 use ncollide::shape::{Ball2, Cuboid2, Plane2};
 use na;
 
