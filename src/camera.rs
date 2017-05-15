@@ -10,7 +10,7 @@ impl Camera {
     pub fn new(width: f64, height: f64) -> Self {
         Camera {
             position: na::zero(),
-            zoom: 1.0,
+            zoom: 30.0,
             size: na::Vector2::new(width, height),
         }
     }
