@@ -35,7 +35,6 @@ fn main() {
 
     let mut app = App::new();
     let mut counter = fps_counter::FPSCounter::new();
-    let mut fps = 0;
 
     let mut gl = GlGraphics::new(opengl);
 
@@ -44,7 +43,6 @@ fn main() {
         match e {
             Input::Update(args) => {
                 app.update(args.dt);
-                window.set_title(format!("fps: {}", fps));
             }
 
             Input::Render(args) => {
@@ -52,7 +50,7 @@ fn main() {
                     graphics::clear(color::CORNFLOWER_BLUE, g);
                     app.render(&c, g);
                 });
-                fps = counter.tick();
+                window.set_title(format!("fps: {}", counter.tick()));
             }
 
             Input::Move(Motion::MouseCursor(x, y)) => app.handle_mouse_move(x, y),
