@@ -1,21 +1,18 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-
-use piston::input::{Key, MouseButton};
+use super::Controller;
+use camera::Camera;
+use color;
 use graphics::{self, Colored, Context, Transformed};
-use opengl_graphics::GlGraphics;
-
+use na;
+use ncollide;
+use ncollide::world::CollisionGroups;
 use nphysics2d::detection::constraint::Constraint;
 use nphysics2d::detection::joint::{Anchor, Fixed, Joint};
 use nphysics2d::object::{RigidBody, RigidBodyHandle, WorldObject};
 use nphysics2d::world::World;
-use ncollide;
-use ncollide::world::CollisionGroups;
-use na;
-
-use super::Controller;
-
-use camera::Camera;
+use opengl_graphics::GlGraphics;
+use piston::input::{Key, MouseButton};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 #[derive(Copy, Clone, PartialEq)]
 #[allow(dead_code)]
@@ -55,6 +52,8 @@ pub struct Game {
     move_camera_down: bool,
     move_camera_left: bool,
     move_camera_right: bool,
+
+    collisions: Vec<Constraint<f64>>,
 }
 
 impl Game {
@@ -77,8 +76,9 @@ impl Game {
             move_camera_down: false,
             move_camera_left: false,
             move_camera_right: false,
-        }
 
+            collisions: vec![],
+        }
     }
 
     fn trans_camera(&mut self, dt: f64) {
@@ -102,7 +102,7 @@ impl Game {
     }
 
     fn get_body_at_mouse(&self) -> Option<RigidBodyHandle<f64>> {
-        let mapped_coords = self.camera.window_to_coord(self.mouse_position);
+        let mapped_coords = self.camera.to_local(self.mouse_position);
         let mapped_point = na::Point2::new(mapped_coords.x, mapped_coords.y);
 
         for b in self.world
@@ -122,17 +122,19 @@ impl Controller for Game {
         let timestep = 1.0 / 60.0;
         if !self.paused {
             self.world.step(timestep);
+            self.collisions.clear();
+            self.world.constraints(&mut self.collisions);
         }
 
         self.trans_camera(dt);
     }
 
-    fn render(&mut self, c: &Context, g: &mut GlGraphics) {
+    fn render(&self, c: &Context, g: &mut GlGraphics) {
         for rb in self.world.rigid_bodies() {
             let object = WorldObject::RigidBody(rb.clone());
             let bobject = object.borrow();
             let transform = bobject.position();
-            let position = self.camera.coord_to_window(transform.translation.vector);
+            let position = self.camera.from_local(transform.translation.vector);
             let rotation = transform.rotation.angle();
             let shape = bobject.shape().as_ref();
             let margin = bobject.margin();
@@ -146,10 +148,10 @@ impl Controller for Game {
                 let radius = s.radius() + margin;
                 let dradius = radius * 2.0;
 
-                graphics::Ellipse::new([1.0; 4])
+                graphics::Ellipse::new(color::WHITE)
                     .border(graphics::ellipse::Border {
-                                color: [1.0; 4].shade(0.5),
-                                radius: 0.2,
+                                color: color::WHITE.shade(0.5),
+                                radius: 0.1,
                             })
                     .resolution(16)
                     .draw([-radius, -radius, dradius, dradius],
@@ -162,10 +164,10 @@ impl Controller for Game {
                 let dwidth = width * 2.0;
                 let dheight = height * 2.0;
 
-                graphics::Rectangle::new([1.0; 4])
+                graphics::Rectangle::new(color::WHITE)
                     .border(graphics::rectangle::Border {
-                                color: [1.0; 4].shade(0.5),
-                                radius: 0.2,
+                                color: color::WHITE.shade(0.5),
+                                radius: 0.1,
                             })
                     .draw([-width, -height, dwidth, dheight],
                           &c.draw_state,
@@ -174,18 +176,13 @@ impl Controller for Game {
             }
         }
 
-        let mut collisions = vec![];
-        self.world.constraints(&mut collisions);
-
-        for collision in &collisions {
+        for collision in &self.collisions {
             match *collision {
                 Constraint::RBRB(_, _, ref contact) => {
                     let world1 = contact.world1;
-                    let world1 = self.camera
-                        .coord_to_window(na::Vector2::new(world1.x, world1.y));
+                    let world1 = self.camera.from_local(na::Vector2::new(world1.x, world1.y));
                     let world2 = contact.world2;
-                    let world2 = self.camera
-                        .coord_to_window(na::Vector2::new(world2.x, world2.y));
+                    let world2 = self.camera.from_local(na::Vector2::new(world2.x, world2.y));
                     graphics::Line::new([0.0, 1.0, 0.0, 1.0], 3.0)
                         .draw([world1.x, world1.y, world2.x, world2.y],
                               &c.draw_state,
@@ -215,11 +212,11 @@ impl Controller for Game {
                     let anchor1_pos = bis.borrow().anchor1_pos();
                     let anchor1_pos =
                         self.camera
-                            .coord_to_window(na::Vector2::new(anchor1_pos.x, anchor1_pos.y));
+                            .from_local(na::Vector2::new(anchor1_pos.x, anchor1_pos.y));
                     let anchor2_pos = bis.borrow().anchor2_pos();
                     let anchor2_pos =
                         self.camera
-                            .coord_to_window(na::Vector2::new(anchor2_pos.x, anchor2_pos.y));
+                            .from_local(na::Vector2::new(anchor2_pos.x, anchor2_pos.y));
 
                     graphics::Line::new([0.0, 0.0, 1.0, 1.0], 3.0)
                         .draw([anchor1_pos.x, anchor1_pos.y, anchor2_pos.x, anchor2_pos.y],
@@ -249,7 +246,7 @@ impl Controller for Game {
                     };
                     let dradius = radius * 2.0;
 
-                    graphics::Ellipse::new([1.0; 4])
+                    graphics::Ellipse::new(color::WHITE)
                         .resolution(16)
                         .draw([-radius, -radius, dradius, dradius],
                               &c.draw_state,
@@ -280,13 +277,13 @@ impl Controller for Game {
                     };
                     let dheight = height * 2.0;
 
-                    graphics::Rectangle::new([1.0; 4]).draw([-width, -height, dwidth, dheight],
-                                                            &c.draw_state,
-                                                            c.trans(self.first_click.x,
-                                                                    self.first_click.y)
-                                                                .zoom(self.camera.zoom())
-                                                                .transform,
-                                                            g);
+                    graphics::Rectangle::new(color::WHITE).draw([-width, -height, dwidth, dheight],
+                                                                &c.draw_state,
+                                                                c.trans(self.first_click.x,
+                                                                        self.first_click.y)
+                                                                    .zoom(self.camera.zoom())
+                                                                    .transform,
+                                                                g);
                 }
 
                 Action::CreatingBallInSocket => {
@@ -320,7 +317,7 @@ impl Controller for Game {
     fn handle_mouse_move(&mut self, x: f64, y: f64) {
         self.mouse_position = na::Vector2::new(x, y);
 
-        let mapped_coords = self.camera.window_to_coord(self.mouse_position);
+        let mapped_coords = self.camera.to_local(self.mouse_position);
         let mapped_point = na::Point2::new(mapped_coords.x, mapped_coords.y);
         let attach2 = na::Isometry2::new(mapped_point.coords, 0.0);
         if self.grabbed_object.is_some() {
@@ -333,7 +330,7 @@ impl Controller for Game {
         if button == MouseButton::Left {
             if self.current_action == Action::None {
                 if pressed {
-                    let mapped_coords = self.camera.window_to_coord(self.mouse_position);
+                    let mapped_coords = self.camera.to_local(self.mouse_position);
                     let mapped_point = na::Point2::new(mapped_coords.x, mapped_coords.y);
 
                     self.grabbed_object = self.get_body_at_mouse();
@@ -363,9 +360,9 @@ impl Controller for Game {
                     self.first_click = self.mouse_position;
                     self.action_step += 1;
                 } else if !pressed && self.action_step == 1 {
-                    let first_click = self.camera.window_to_coord(self.first_click);
+                    let first_click = self.camera.to_local(self.first_click);
                     let mapped_first_click = na::Point2::new(first_click.x, first_click.y);
-                    let mouse_position = self.camera.window_to_coord(self.mouse_position);
+                    let mouse_position = self.camera.to_local(self.mouse_position);
                     let mapped_mouse_position = na::Point2::new(mouse_position.x, mouse_position.y);
 
                     let radius = na::distance(&mapped_first_click, &mapped_mouse_position);
@@ -379,7 +376,7 @@ impl Controller for Game {
                     if radius > 0.0 {
                         self.current_action = Action::None;
 
-                        let pos = self.camera.window_to_coord(self.first_click);
+                        let pos = self.camera.to_local(self.first_click);
 
                         let ball = ncollide::shape::Ball2::new(radius);
                         let mut rb = RigidBody::new_dynamic(ball, 1.0, 0.3, 0.6);
@@ -412,7 +409,7 @@ impl Controller for Game {
                         height
                     };
 
-                    let pos = self.camera.window_to_coord(self.first_click);
+                    let pos = self.camera.to_local(self.first_click);
 
                     let cuboid = ncollide::shape::Cuboid2::new(na::Vector2::new(width, height));
                     let mut rb = RigidBody::new_dynamic(cuboid, 1.0, 0.3, 0.6);

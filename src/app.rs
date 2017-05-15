@@ -1,14 +1,13 @@
-use piston::input::{Key, MouseButton};
+use controller::{self, Controller};
 use graphics::Context;
-use opengl_graphics::GlGraphics;
+use na;
+use ncollide::shape::{Ball2, Cuboid2, Plane2};
 
 use nphysics2d::detection::joint::{Anchor, BallInSocket};
 use nphysics2d::object::RigidBody;
 use nphysics2d::world::World;
-use ncollide::shape::{Ball2, Cuboid2, Plane2};
-use na;
-
-use controller::{self, Controller};
+use opengl_graphics::GlGraphics;
+use piston::input::{Key, MouseButton};
 
 pub struct App {
     current_controller: Box<Controller>,
@@ -23,7 +22,7 @@ impl App {
         let ground_geom = Plane2::new(na::Vector2::new(0.0, -1.0));
         world.add_rigid_body(RigidBody::new_static(ground_geom, 0.3, 0.6));
 
-        let n = 5;
+        let n = 10;
         let shift = 10.0;
 
         for i in 0usize..n {

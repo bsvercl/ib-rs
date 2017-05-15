@@ -15,13 +15,12 @@ mod camera;
 mod controller;
 mod color;
 
+use app::App;
+use glutin_window::GlutinWindow;
+use opengl_graphics::{GlGraphics, OpenGL};
 use piston::event_loop::{EventLoop, Events, EventSettings};
 use piston::input::{Button, Input, Motion};
 use piston::window::{AdvancedWindow, WindowSettings};
-use opengl_graphics::{GlGraphics, OpenGL};
-use glutin_window::GlutinWindow;
-
-use app::App;
 
 fn main() {
     let opengl = OpenGL::V3_2;
@@ -41,11 +40,11 @@ fn main() {
     let mut events = Events::new(EventSettings::new().ups(60));
     while let Some(e) = events.next(&mut window) {
         match e {
-            Input::Update(args) => {
+            Input::Update(ref args) => {
                 app.update(args.dt);
             }
 
-            Input::Render(args) => {
+            Input::Render(ref args) => {
                 gl.draw(args.viewport(), |c, g| {
                     graphics::clear(color::CORNFLOWER_BLUE, g);
                     app.render(&c, g);

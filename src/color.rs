@@ -14,3 +14,6 @@ macro_rules! make_color {
 }
 
 pub const CORNFLOWER_BLUE: Color = make_color!(100, 149, 237);
+#[allow(dead_code)]
+pub const BLACK: Color = make_color!(0, 0, 0);
+pub const WHITE: Color = make_color!(255, 255, 255);

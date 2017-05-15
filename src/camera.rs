@@ -33,11 +33,11 @@ impl Camera {
 }
 
 impl Camera {
-    pub fn window_to_coord(&self, xy: na::Vector2<f64>) -> na::Vector2<f64> {
+    pub fn to_local(&self, xy: na::Vector2<f64>) -> na::Vector2<f64> {
         self.position + (xy - self.size / 2.0) / self.zoom
     }
 
-    pub fn coord_to_window(&self, xy: na::Vector2<f64>) -> na::Vector2<f64> {
+    pub fn from_local(&self, xy: na::Vector2<f64>) -> na::Vector2<f64> {
         self.zoom * (xy - self.position) + self.size / 2.0
     }
 }

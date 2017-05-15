@@ -1,6 +1,6 @@
-use piston::input::{Key, MouseButton};
 use graphics::Context;
 use opengl_graphics::GlGraphics;
+use piston::input::{Key, MouseButton};
 
 mod game;
 
@@ -8,7 +8,7 @@ pub use self::game::Game;
 
 pub trait Controller {
     fn update(&mut self, dt: f64);
-    fn render(&mut self, c: &Context, g: &mut GlGraphics);
+    fn render(&self, c: &Context, g: &mut GlGraphics);
 
     fn handle_mouse_move(&mut self, _x: f64, _y: f64) {}
     fn handle_mouse_button(&mut self, _button: MouseButton, _pressed: bool) {}
