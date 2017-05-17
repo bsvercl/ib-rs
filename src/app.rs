@@ -1,5 +1,4 @@
 use color;
-use controller::{self, Controller};
 use fps_counter::FPSCounter;
 use glutin_window::GlutinWindow;
 use graphics;
@@ -7,12 +6,13 @@ use opengl_graphics::{OpenGL, GlGraphics};
 use piston::event_loop::{EventLoop, Events, EventSettings};
 use piston::input::{Button, Input, Motion};
 use piston::window::{AdvancedWindow, WindowSettings};
+use state::{self, State};
 
 
 pub struct App {
     window: GlutinWindow,
 
-    current_controller: Box<Controller>,
+    current_controller: Box<State>,
 }
 
 impl App {
@@ -20,7 +20,7 @@ impl App {
         App {
             window: WindowSettings::new("", [800, 600]).build().unwrap(),
 
-            current_controller: Box::new(controller::Game::new()),
+            current_controller: Box::new(state::Game::new()),
         }
     }
 

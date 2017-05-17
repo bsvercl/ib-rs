@@ -28,17 +28,17 @@ impl Camera {
         self.size.y = height as f64;
     }
 
-    pub fn trans(&mut self, xy: na::Vector2<f64>) {
+    pub fn trans(&mut self, xy: &na::Vector2<f64>) {
         self.position += xy;
     }
 }
 
 impl Camera {
-    pub fn to_local(&self, xy: na::Vector2<f64>) -> na::Vector2<f64> {
+    pub fn to_local(&self, xy: &na::Vector2<f64>) -> na::Vector2<f64> {
         self.position + (xy - self.size / 2.0) / self.zoom
     }
 
-    pub fn from_local(&self, xy: na::Vector2<f64>) -> na::Vector2<f64> {
+    pub fn from_local(&self, xy: &na::Vector2<f64>) -> na::Vector2<f64> {
         self.zoom * (xy - self.position) + self.size / 2.0
     }
 }

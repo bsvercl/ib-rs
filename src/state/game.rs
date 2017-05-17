@@ -1,4 +1,4 @@
-use super::Controller;
+use super::State;
 use camera::Camera;
 use color;
 use graphics::{self, Context, Transformed};
@@ -101,11 +101,12 @@ impl Game {
             delta.x = camera_move_speed;
         }
 
-        self.camera.trans(delta * dt);
+        delta *= dt;
+        self.camera.trans(&delta);
     }
 
     fn get_body_at_mouse(&self) -> Option<RigidBodyHandle<f64>> {
-        let mapped_coords = self.camera.to_local(self.mouse_position);
+        let mapped_coords = self.camera.to_local(&self.mouse_position);
         let mapped_point = na::Point2::new(mapped_coords.x, mapped_coords.y);
 
         for b in self.world
@@ -120,7 +121,7 @@ impl Game {
     }
 }
 
-impl Controller for Game {
+impl State for Game {
     fn update(&mut self, dt: f64) {
         let timestep = 1.0 / 60.0;
         if !self.paused {
@@ -137,7 +138,7 @@ impl Controller for Game {
             let object = WorldObject::RigidBody(rb.clone());
             let bobject = object.borrow();
             let transform = bobject.position();
-            let position = self.camera.from_local(transform.translation.vector);
+            let position = self.camera.from_local(&transform.translation.vector);
             let rotation = transform.rotation.angle();
             let shape = bobject.shape().as_ref();
             let margin = bobject.margin();
@@ -160,9 +161,11 @@ impl Controller for Game {
             match *collision {
                 Constraint::RBRB(_, _, ref contact) => {
                     let world1 = contact.world1;
-                    let world1 = self.camera.from_local(na::Vector2::new(world1.x, world1.y));
+                    let world1 = self.camera
+                        .from_local(&na::Vector2::new(world1.x, world1.y));
                     let world2 = contact.world2;
-                    let world2 = self.camera.from_local(na::Vector2::new(world2.x, world2.y));
+                    let world2 = self.camera
+                        .from_local(&na::Vector2::new(world2.x, world2.y));
                     graphics::Line::new([0.0, 1.0, 0.0, 1.0], 3.0)
                         .draw([world1.x, world1.y, world2.x, world2.y],
                               &c.draw_state,
@@ -192,11 +195,11 @@ impl Controller for Game {
                     let anchor1_pos = bis.borrow().anchor1_pos();
                     let anchor1_pos =
                         self.camera
-                            .from_local(na::Vector2::new(anchor1_pos.x, anchor1_pos.y));
+                            .from_local(&na::Vector2::new(anchor1_pos.x, anchor1_pos.y));
                     let anchor2_pos = bis.borrow().anchor2_pos();
                     let anchor2_pos =
                         self.camera
-                            .from_local(na::Vector2::new(anchor2_pos.x, anchor2_pos.y));
+                            .from_local(&na::Vector2::new(anchor2_pos.x, anchor2_pos.y));
 
                     graphics::Line::new([0.0, 0.0, 1.0, 1.0], 3.0)
                         .draw([anchor1_pos.x, anchor1_pos.y, anchor2_pos.x, anchor2_pos.y],
@@ -297,7 +300,7 @@ impl Controller for Game {
     fn handle_mouse_move(&mut self, x: f64, y: f64) {
         self.mouse_position = na::Vector2::new(x, y);
 
-        let mapped_coords = self.camera.to_local(self.mouse_position);
+        let mapped_coords = self.camera.to_local(&self.mouse_position);
         let mapped_point = na::Point2::new(mapped_coords.x, mapped_coords.y);
         let attach2 = na::Isometry2::new(mapped_point.coords, 0.0);
         if self.grabbed_object.is_some() {
@@ -310,7 +313,7 @@ impl Controller for Game {
         if button == MouseButton::Left {
             if self.current_action == Action::None {
                 if pressed {
-                    let mapped_coords = self.camera.to_local(self.mouse_position);
+                    let mapped_coords = self.camera.to_local(&self.mouse_position);
                     let mapped_point = na::Point2::new(mapped_coords.x, mapped_coords.y);
 
                     self.grabbed_object = self.get_body_at_mouse();
@@ -340,9 +343,9 @@ impl Controller for Game {
                     self.first_click = self.mouse_position;
                     self.action_step += 1;
                 } else if !pressed && self.action_step == 1 {
-                    let first_click = self.camera.to_local(self.first_click);
+                    let first_click = self.camera.to_local(&self.first_click);
                     let mapped_first_click = na::Point2::new(first_click.x, first_click.y);
-                    let mouse_position = self.camera.to_local(self.mouse_position);
+                    let mouse_position = self.camera.to_local(&self.mouse_position);
                     let mapped_mouse_position = na::Point2::new(mouse_position.x, mouse_position.y);
 
                     let radius = na::distance(&mapped_first_click, &mapped_mouse_position);
@@ -356,7 +359,7 @@ impl Controller for Game {
                     if radius > 0.0 {
                         self.current_action = Action::None;
 
-                        let pos = self.camera.to_local(self.first_click);
+                        let pos = self.camera.to_local(&self.first_click);
 
                         let ball = ncollide::shape::Ball2::new(radius);
                         let mut rb = RigidBody::new_dynamic(ball, 1.0, 0.3, 0.6);
@@ -389,7 +392,7 @@ impl Controller for Game {
                         height
                     };
 
-                    let pos = self.camera.to_local(self.first_click);
+                    let pos = self.camera.to_local(&self.first_click);
 
                     let cuboid = ncollide::shape::Cuboid2::new(na::Vector2::new(width, height));
                     let mut rb = RigidBody::new_dynamic(cuboid, 1.0, 0.3, 0.6);

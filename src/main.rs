@@ -12,8 +12,8 @@ extern crate nalgebra as na;
 
 mod app;
 mod camera;
-mod controller;
 mod color;
+mod state;
 mod view;
 
 fn main() {

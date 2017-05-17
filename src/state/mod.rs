@@ -6,7 +6,7 @@ mod game;
 
 pub use self::game::Game;
 
-pub trait Controller {
+pub trait State {
     fn update(&mut self, dt: f64);
     fn render(&self, c: &Context, g: &mut GlGraphics);
 
