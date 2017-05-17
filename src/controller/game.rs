@@ -1,7 +1,7 @@
 use super::Controller;
 use camera::Camera;
 use color;
-use graphics::{self, Colored, Context, Transformed};
+use graphics::{self, Context, Transformed};
 use na;
 use ncollide;
 use ncollide::world::CollisionGroups;
@@ -13,6 +13,7 @@ use opengl_graphics::GlGraphics;
 use piston::input::{Key, MouseButton};
 use std::cell::RefCell;
 use std::rc::Rc;
+use view;
 
 #[derive(Copy, Clone, PartialEq)]
 #[allow(dead_code)]
@@ -57,10 +58,12 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(world: World<f64>) -> Self {
+    pub fn new() -> Self {
+        let mut world = World::new();
+        world.set_gravity(na::Vector2::new(0.0, 30.0));
         Game {
             world: world,
-            camera: Camera::new(800.0, 600.0),
+            camera: Camera::new(800, 600),
 
             paused: true,
 
@@ -139,40 +142,17 @@ impl Controller for Game {
             let shape = bobject.shape().as_ref();
             let margin = bobject.margin();
 
-            let transform = c.trans(position.x, position.y)
+            let c = c.trans(position.x, position.y)
                 .rot_rad(rotation)
-                .zoom(self.camera.zoom())
-                .transform;
+                .zoom(self.camera.zoom());
 
             if let Some(s) = shape.as_shape::<ncollide::shape::Ball2<f64>>() {
                 let radius = s.radius() + margin;
-                let dradius = radius * 2.0;
-
-                graphics::Ellipse::new(color::WHITE)
-                    .border(graphics::ellipse::Border {
-                                color: color::WHITE.shade(0.5),
-                                radius: 0.1,
-                            })
-                    .resolution(16)
-                    .draw([-radius, -radius, dradius, dradius],
-                          &c.draw_state,
-                          transform,
-                          g);
+                view::draw_ball(radius, &c, g);
             } else if let Some(s) = shape.as_shape::<ncollide::shape::Cuboid2<f64>>() {
                 let width = s.half_extents().x + margin;
                 let height = s.half_extents().y + margin;
-                let dwidth = width * 2.0;
-                let dheight = height * 2.0;
-
-                graphics::Rectangle::new(color::WHITE)
-                    .border(graphics::rectangle::Border {
-                                color: color::WHITE.shade(0.5),
-                                radius: 0.1,
-                            })
-                    .draw([-width, -height, dwidth, dheight],
-                          &c.draw_state,
-                          transform,
-                          g);
+                view::draw_cuboid(width, height, &c, g);
             }
         }
 
@@ -475,6 +455,6 @@ impl Controller for Game {
     }
 
     fn handle_resize(&mut self, width: u32, height: u32) {
-        self.camera.set_size(width as f64, height as f64);
+        self.camera.set_size(width, height);
     }
 }

@@ -7,11 +7,11 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new(width: f64, height: f64) -> Self {
+    pub fn new(width: u32, height: u32) -> Self {
         Camera {
             position: na::zero(),
             zoom: 30.0,
-            size: na::Vector2::new(width, height),
+            size: na::Vector2::new(width as f64, height as f64),
         }
     }
 
@@ -23,8 +23,9 @@ impl Camera {
         self.zoom = zoom;
     }
 
-    pub fn set_size(&mut self, width: f64, height: f64) {
-        self.size = na::Vector2::new(width, height);
+    pub fn set_size(&mut self, width: u32, height: u32) {
+        self.size.x = width as f64;
+        self.size.y = height as f64;
     }
 
     pub fn trans(&mut self, xy: na::Vector2<f64>) {
