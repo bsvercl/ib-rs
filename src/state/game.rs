@@ -43,11 +43,14 @@ pub struct Game {
 
     grabbed_object: Option<RigidBodyHandle<f64>>,
     grabbed_object_joint: Option<Rc<RefCell<Fixed<f64>>>>,
+
     mouse_position: na::Vector2<f64>,
+    mouse_position_world: na::Point2<f64>,
+    first_click: na::Vector2<f64>,
+    first_click_world: na::Point2<f64>,
 
     current_action: Action,
     action_step: i8,
-    first_click: na::Vector2<f64>,
 
     move_camera_up: bool,
     move_camera_down: bool,
@@ -61,6 +64,37 @@ impl Game {
     pub fn new() -> Self {
         let mut world = World::new();
         world.set_gravity(na::Vector2::new(0.0, 30.0));
+
+        let rb = RigidBody::new_static(ncollide::shape::Plane2::new(na::Vector2::new(0.0, -1.0)),
+                                       0.3,
+                                       0.6);
+        world.add_rigid_body(rb);
+
+        let num = 25;
+        let rad = 0.5;
+        let shift = 2.5 * rad;
+        let centerx = shift * (num as f64) / 2.0;
+
+        for i in 0usize..num {
+            for j in i..num {
+                let fj = j as f64;
+                let fi = i as f64;
+                let x = (fi * shift / 2.0) + (fj - fi) * 2.5 * rad - centerx;
+                let y = -fi * 2.5 * rad - 0.04 - rad;
+
+                let mut rb =
+                    RigidBody::new_dynamic(ncollide::shape::Cuboid2::new(na::Vector2::new(rad -
+                                                                                          0.04,
+                                                                                          rad -
+                                                                                          0.04)),
+                                           1.0,
+                                           0.3,
+                                           0.6);
+                rb.append_translation(&na::Translation2::new(x, y));
+                world.add_rigid_body(rb);
+            }
+        }
+
         Game {
             world: world,
             camera: Camera::new(800, 600),
@@ -69,11 +103,14 @@ impl Game {
 
             grabbed_object: None,
             grabbed_object_joint: None,
+
             mouse_position: na::zero(),
+            mouse_position_world: na::Point2::new(0.0, 0.0),
+            first_click: na::zero(),
+            first_click_world: na::Point2::new(0.0, 0.0),
 
             current_action: Action::None,
             action_step: 0,
-            first_click: na::zero(),
 
             move_camera_up: false,
             move_camera_down: false,
@@ -106,12 +143,10 @@ impl Game {
     }
 
     fn get_body_at_mouse(&self) -> Option<RigidBodyHandle<f64>> {
-        let mapped_coords = self.camera.to_local(&self.mouse_position);
-        let mapped_point = na::Point2::new(mapped_coords.x, mapped_coords.y);
-
-        for b in self.world
+        for b in
+            self.world
                 .collision_world()
-                .interferences_with_point(&mapped_point, &CollisionGroups::new()) {
+                .interferences_with_point(&self.mouse_position_world, &CollisionGroups::new()) {
             if let WorldObject::RigidBody(ref rb) = b.data {
                 return Some(rb.clone());
             }
@@ -213,13 +248,9 @@ impl State for Game {
         }
 
         if self.current_action != Action::None {
-            let mapped_first_click = na::Point2::new(self.first_click.x, self.first_click.y);
-            let mapped_mouse_position = na::Point2::new(self.mouse_position.x,
-                                                        self.mouse_position.y);
-
             match self.current_action {
                 Action::CreatingBall if self.action_step == 1 => {
-                    let radius = na::distance(&mapped_first_click, &mapped_mouse_position);
+                    let radius = na::distance(&self.first_click_world, &self.mouse_position_world);
                     let radius = if radius < 0.1 {
                         0.1
                     } else if radius > 10.0 {
@@ -240,7 +271,7 @@ impl State for Game {
                 }
 
                 Action::CreatingCuboid if self.action_step == 1 => {
-                    let width = mapped_mouse_position.x - mapped_first_click.x;
+                    let width = self.mouse_position_world.x - self.first_click_world.x;
                     let width = if na::abs(&width) < 0.1 {
                         if width < 0.0 { -0.1 } else { 0.1 }
                     } else if na::abs(&width) > 10.0 {
@@ -250,7 +281,7 @@ impl State for Game {
                     };
                     let dwidth = width * 2.0;
 
-                    let height = mapped_mouse_position.y - mapped_first_click.y;
+                    let height = self.mouse_position_world.y - self.first_click_world.y;
                     let height = if na::abs(&width) < 0.1 {
                         if height < 0.0 { -0.1 } else { 0.1 }
                     } else if na::abs(&height) > 10.0 {
@@ -277,7 +308,7 @@ impl State for Game {
                         .resolution(16)
                         .draw([-radius, -radius, dradius, dradius],
                               &c.draw_state,
-                              c.trans(mapped_mouse_position.x, mapped_mouse_position.y)
+                              c.trans(self.mouse_position.x, self.mouse_position.y)
                                   .transform,
                               g);
 
@@ -288,7 +319,7 @@ impl State for Game {
                         .resolution(16)
                         .draw([-radius, -radius, dradius, dradius],
                               &c.draw_state,
-                              c.trans(mapped_mouse_position.x, mapped_mouse_position.y)
+                              c.trans(self.mouse_position.x, self.mouse_position.y)
                                   .transform,
                               g);
                 }
@@ -298,11 +329,13 @@ impl State for Game {
     }
 
     fn handle_mouse_move(&mut self, x: f64, y: f64) {
-        self.mouse_position = na::Vector2::new(x, y);
-
+        self.mouse_position.x = x;
+        self.mouse_position.y = y;
         let mapped_coords = self.camera.to_local(&self.mouse_position);
-        let mapped_point = na::Point2::new(mapped_coords.x, mapped_coords.y);
-        let attach2 = na::Isometry2::new(mapped_point.coords, 0.0);
+        self.mouse_position_world.x = mapped_coords.x;
+        self.mouse_position_world.y = mapped_coords.y;
+
+        let attach2 = na::Isometry2::new(self.mouse_position_world.coords, 0.0);
         if self.grabbed_object.is_some() {
             let joint = self.grabbed_object_joint.as_ref().unwrap();
             joint.borrow_mut().set_local2(attach2);
@@ -313,9 +346,6 @@ impl State for Game {
         if button == MouseButton::Left {
             if self.current_action == Action::None {
                 if pressed {
-                    let mapped_coords = self.camera.to_local(&self.mouse_position);
-                    let mapped_point = na::Point2::new(mapped_coords.x, mapped_coords.y);
-
                     self.grabbed_object = self.get_body_at_mouse();
 
                     if let Some(ref b) = self.grabbed_object {
@@ -323,7 +353,7 @@ impl State for Game {
                             self.world.remove_fixed(j);
                         }
 
-                        let attach2 = na::Isometry2::new(mapped_point.coords, 0.0);
+                        let attach2 = na::Isometry2::new(self.mouse_position_world.coords, 0.0);
                         let attach1 = b.borrow().position().inverse() * attach2;
                         let anchor1 = Anchor::new(Some(b.clone()), attach1);
                         let anchor2 = Anchor::new(None, attach2);
@@ -341,14 +371,10 @@ impl State for Game {
             } else if self.current_action == Action::CreatingBall {
                 if pressed && self.action_step == 0 {
                     self.first_click = self.mouse_position;
+                    self.first_click_world = self.mouse_position_world;
                     self.action_step += 1;
                 } else if !pressed && self.action_step == 1 {
-                    let first_click = self.camera.to_local(&self.first_click);
-                    let mapped_first_click = na::Point2::new(first_click.x, first_click.y);
-                    let mouse_position = self.camera.to_local(&self.mouse_position);
-                    let mapped_mouse_position = na::Point2::new(mouse_position.x, mouse_position.y);
-
-                    let radius = na::distance(&mapped_first_click, &mapped_mouse_position);
+                    let radius = na::distance(&self.first_click_world, &self.mouse_position_world);
                     let radius = if radius < 0.1 {
                         0.1
                     } else if radius > 10.0 {
@@ -359,23 +385,23 @@ impl State for Game {
                     if radius > 0.0 {
                         self.current_action = Action::None;
 
-                        let pos = self.camera.to_local(&self.first_click);
-
                         let ball = ncollide::shape::Ball2::new(radius);
                         let mut rb = RigidBody::new_dynamic(ball, 1.0, 0.3, 0.6);
-                        rb.append_translation(&na::Translation2::new(pos.x, pos.y));
+                        rb.append_translation(&na::Translation2::new(self.first_click_world.x,
+                                                                     self.first_click_world.y));
                         self.world.add_rigid_body(rb);
                     }
                 }
             } else if self.current_action == Action::CreatingCuboid {
                 if pressed && self.action_step == 0 {
                     self.first_click = self.mouse_position;
+                    self.first_click_world = self.mouse_position_world;
                     self.action_step += 1;
                 } else if !pressed && self.action_step == 1 &&
                           self.mouse_position != self.first_click {
                     self.current_action = Action::None;
 
-                    let width = self.mouse_position.x - self.first_click.x;
+                    let width = self.mouse_position_world.x - self.first_click_world.x;
                     let width = if width < 0.1 {
                         0.1
                     } else if width > 10.0 {
@@ -383,7 +409,7 @@ impl State for Game {
                     } else {
                         width
                     };
-                    let height = self.mouse_position.y - self.first_click.y;
+                    let height = self.mouse_position_world.y - self.first_click_world.y;
                     let height = if height < 0.1 {
                         0.1
                     } else if height > 10.0 {
@@ -392,11 +418,10 @@ impl State for Game {
                         height
                     };
 
-                    let pos = self.camera.to_local(&self.first_click);
-
                     let cuboid = ncollide::shape::Cuboid2::new(na::Vector2::new(width, height));
                     let mut rb = RigidBody::new_dynamic(cuboid, 1.0, 0.3, 0.6);
-                    rb.append_translation(&na::Translation2::new(pos.x, pos.y));
+                    rb.append_translation(&na::Translation2::new(self.first_click_world.x,
+                                                                 self.first_click_world.y));
                     self.world.add_rigid_body(rb);
                 }
             }
