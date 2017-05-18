@@ -3,7 +3,7 @@ use camera::Camera;
 use color;
 use graphics::{self, Context, Transformed};
 use na;
-use ncollide;
+use ncollide::shape::{Ball2, Cuboid2, Plane2};
 use ncollide::world::CollisionGroups;
 use nphysics2d::detection::constraint::Constraint;
 use nphysics2d::detection::joint::{Anchor, Fixed, Joint};
@@ -23,6 +23,9 @@ const MIN_CUBOID_HEIGHT: f64 = 0.1;
 
 const MAX_BALL_RADIUS: f64 = 10.0;
 const MIN_BALL_RADIUS: f64 = 0.1;
+
+const MIN_ZOOM: f64 = 12.0;
+const MAX_ZOOM: f64 = 75.0;
 
 #[derive(Copy, Clone, PartialEq)]
 #[allow(dead_code)]
@@ -83,9 +86,7 @@ impl Game {
         world.set_gravity(na::Vector2::new(0.0, 30.0));
 
         // Creates the ground
-        let rb = RigidBody::new_static(ncollide::shape::Plane2::new(na::Vector2::new(0.0, -1.0)),
-                                       0.3,
-                                       0.6);
+        let rb = RigidBody::new_static(Plane2::new(na::Vector2::new(0.0, -1.0)), 0.3, 0.6);
         world.add_rigid_body(rb);
 
         // Creating cuboids for pyramid
@@ -101,14 +102,11 @@ impl Game {
                 let x = (fi * shift / 2.0) + (fj - fi) * 2.5 * rad - centerx;
                 let y = -fi * 2.5 * rad - 0.04 - rad;
 
-                let mut rb =
-                    RigidBody::new_dynamic(ncollide::shape::Cuboid2::new(na::Vector2::new(rad -
-                                                                                          0.04,
-                                                                                          rad -
-                                                                                          0.04)),
-                                           1.0,
-                                           0.3,
-                                           0.6);
+                let mut rb = RigidBody::new_dynamic(Cuboid2::new(na::Vector2::new(rad - 0.04,
+                                                                                  rad - 0.04)),
+                                                    1.0,
+                                                    0.3,
+                                                    0.6);
                 rb.append_translation(&na::Translation2::new(x, y));
                 world.add_rigid_body(rb);
             }
@@ -173,6 +171,18 @@ impl Game {
 
         None
     }
+
+    fn zoom_in(&mut self) {
+        let zoom = self.camera.zoom() * 4.0 / 3.0;
+        let zoom = if zoom > MAX_ZOOM { MAX_ZOOM } else { zoom };
+        self.camera.set_zoom(zoom);
+    }
+
+    fn zoom_out(&mut self) {
+        let zoom = self.camera.zoom() * 3.0 / 4.0;
+        let zoom = if zoom < MIN_ZOOM { MIN_ZOOM } else { zoom };
+        self.camera.set_zoom(zoom);
+    }
 }
 
 impl State for Game {
@@ -203,10 +213,10 @@ impl State for Game {
                 .rot_rad(rotation)
                 .zoom(self.camera.zoom());
 
-            if let Some(s) = shape.as_shape::<ncollide::shape::Ball2<f64>>() {
+            if let Some(s) = shape.as_shape::<Ball2<f64>>() {
                 let radius = s.radius() + margin;
                 view::draw_ball(radius, [1.0; 4], &c, g);
-            } else if let Some(s) = shape.as_shape::<ncollide::shape::Cuboid2<f64>>() {
+            } else if let Some(s) = shape.as_shape::<Cuboid2<f64>>() {
                 let width = s.half_extents().x + margin;
                 let height = s.half_extents().y + margin;
                 view::draw_cuboid(width, height, [1.0; 4], &c, g);
@@ -429,7 +439,7 @@ impl State for Game {
                     if radius > 0.0 {
                         self.current_action = Action::None;
 
-                        let ball = ncollide::shape::Ball2::new(radius);
+                        let ball = Ball2::new(radius);
                         let mut rb = RigidBody::new_dynamic(ball, 1.0, 0.3, 0.6);
                         rb.append_translation(&na::Translation2::new(self.first_click_world.x,
                                                                      self.first_click_world.y));
@@ -453,7 +463,7 @@ impl State for Game {
                     let height = na::abs(&height);
                     let height = na::clamp(height, MIN_CUBOID_HEIGHT, MAX_CUBOID_HEIGHT);
 
-                    let cuboid = ncollide::shape::Cuboid2::new(na::Vector2::new(width, height));
+                    let cuboid = Cuboid2::new(na::Vector2::new(width, height));
                     let mut rb = RigidBody::new_dynamic(cuboid, 1.0, 0.3, 0.6);
                     rb.append_translation(&na::Translation2::new(self.first_click_world.x,
                                                                  self.first_click_world.y));
@@ -465,13 +475,11 @@ impl State for Game {
 
     fn handle_mouse_scroll(&mut self, _: f64, y: f64) {
         if y < 0.0 {
-            let zoom = self.camera.zoom() * 3.0 / 4.0;
-            let zoom = if zoom < 12.0 { 12.0 } else { zoom };
-            self.camera.set_zoom(zoom);
+            // Scrolling down
+            self.zoom_out();
         } else {
-            let zoom = self.camera.zoom() * 4.0 / 3.0;
-            let zoom = if zoom > 75.0 { 75.0 } else { zoom };
-            self.camera.set_zoom(zoom);
+            // Scrolling up
+            self.zoom_in();
         }
     }
 
@@ -501,17 +509,8 @@ impl State for Game {
                 self.paused = !self.paused;
             }
 
-            Key::W if pressed => {
-                let zoom = self.camera.zoom() * 4.0 / 3.0;
-                let zoom = if zoom > 75.0 { 75.0 } else { zoom };
-                self.camera.set_zoom(zoom);
-            }
-
-            Key::S if pressed => {
-                let zoom = self.camera.zoom() * 3.0 / 4.0;
-                let zoom = if zoom < 12.0 { 12.0 } else { zoom };
-                self.camera.set_zoom(zoom);
-            }
+            Key::W if pressed => self.zoom_in(),
+            Key::S if pressed => self.zoom_out(),
 
             _ => (),
         }
