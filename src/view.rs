@@ -21,8 +21,13 @@ pub fn draw_cuboid(width: f64, height: f64, c: &Context, g: &mut GlGraphics) {
     let dwidth = width * 2.0;
     let dheight = height * 2.0;
 
-    graphics::Rectangle::new(color::WHITE).draw([-width, -height, dwidth, dheight],
-                                                &c.draw_state,
-                                                c.transform,
-                                                g);
+    graphics::Rectangle::new(color::WHITE)
+        .border(graphics::rectangle::Border {
+                    color: color::WHITE.shade(0.5),
+                    radius: 0.1,
+                })
+        .draw([-width, -height, dwidth, dheight],
+              &c.draw_state,
+              c.transform,
+              g);
 }
