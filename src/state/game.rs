@@ -37,16 +37,23 @@ enum Action {
 
 pub struct Game {
     world: World<f64>,
+    // Handles conversions between world->window and window->world
     camera: Camera,
 
+    // is the simulation running?
     paused: bool,
 
+    // Currently grabbed object with the mouse
     grabbed_object: Option<RigidBodyHandle<f64>>,
     grabbed_object_joint: Option<Rc<RefCell<Fixed<f64>>>>,
 
+    // Mouse position in window space
     mouse_position: na::Vector2<f64>,
+    // Mouse position in world space
     mouse_position_world: na::Point2<f64>,
+    // First click in window space
     first_click: na::Vector2<f64>,
+    // First click in world space
     first_click_world: na::Point2<f64>,
 
     current_action: Action,
@@ -57,7 +64,8 @@ pub struct Game {
     move_camera_left: bool,
     move_camera_right: bool,
 
-    collisions: Vec<Constraint<f64>>,
+    // Holds constraints to be drawn
+    constraints: Vec<Constraint<f64>>,
 }
 
 impl Game {
@@ -65,11 +73,13 @@ impl Game {
         let mut world = World::new();
         world.set_gravity(na::Vector2::new(0.0, 30.0));
 
+        // Creates the ground
         let rb = RigidBody::new_static(ncollide::shape::Plane2::new(na::Vector2::new(0.0, -1.0)),
                                        0.3,
                                        0.6);
         world.add_rigid_body(rb);
 
+        // Creating cuboids for pyramid
         let num = 25;
         let rad = 0.5;
         let shift = 2.5 * rad;
@@ -117,7 +127,7 @@ impl Game {
             move_camera_left: false,
             move_camera_right: false,
 
-            collisions: vec![],
+            constraints: vec![],
         }
     }
 
@@ -158,11 +168,13 @@ impl Game {
 
 impl State for Game {
     fn update(&mut self, dt: f64) {
+        // Constant timestep for physics is important
         let timestep = 1.0 / 60.0;
         if !self.paused {
             self.world.step(timestep);
-            self.collisions.clear();
-            self.world.constraints(&mut self.collisions);
+
+            self.constraints.clear();
+            self.world.constraints(&mut self.constraints);
         }
 
         self.trans_camera(dt);
@@ -192,8 +204,8 @@ impl State for Game {
             }
         }
 
-        for collision in &self.collisions {
-            match *collision {
+        for constraint in &self.constraints {
+            match *constraint {
                 Constraint::RBRB(_, _, ref contact) => {
                     let world1 = contact.world1;
                     let world1 = self.camera
@@ -243,7 +255,23 @@ impl State for Game {
                               g);
                 }
 
-                _ => {}
+                Constraint::Fixed(ref f) => {
+                    let anchor1_pos = f.borrow().anchor1_pos().translation.vector;
+                    let anchor1_pos =
+                        self.camera
+                            .from_local(&na::Vector2::new(anchor1_pos.x, anchor1_pos.y));
+                    let anchor2_pos = f.borrow().anchor2_pos().translation.vector;
+                    let anchor2_pos =
+                        self.camera
+                            .from_local(&na::Vector2::new(anchor2_pos.x, anchor2_pos.y));
+
+                    graphics::Line::new([1.0, 0.0, 0.0, 1.0], 3.0)
+                        .draw([anchor1_pos.x, anchor1_pos.y, anchor2_pos.x, anchor2_pos.y],
+                              &c.draw_state,
+                              c.transform,
+                              g);
+
+                }
             }
         }
 
@@ -323,6 +351,8 @@ impl State for Game {
                                   .transform,
                               g);
                 }
+
+                // All other actions
                 _ => {}
             }
         }
