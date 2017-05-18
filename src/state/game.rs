@@ -446,21 +446,12 @@ impl State for Game {
                     self.current_action = Action::None;
 
                     let width = self.mouse_position_world.x - self.first_click_world.x;
-                    let width = if width < MIN_CUBOID_WIDTH {
-                        MIN_CUBOID_WIDTH
-                    } else if width > MAX_CUBOID_WIDTH {
-                        MAX_CUBOID_WIDTH
-                    } else {
-                        width
-                    };
+                    let width = na::abs(&width);
+                    let width = na::clamp(width, MIN_CUBOID_WIDTH, MAX_CUBOID_WIDTH);
+
                     let height = self.mouse_position_world.y - self.first_click_world.y;
-                    let height = if height < MIN_CUBOID_HEIGHT {
-                        MIN_CUBOID_HEIGHT
-                    } else if height > MAX_CUBOID_HEIGHT {
-                        MAX_CUBOID_HEIGHT
-                    } else {
-                        height
-                    };
+                    let height = na::abs(&height);
+                    let height = na::clamp(height, MIN_CUBOID_HEIGHT, MAX_CUBOID_HEIGHT);
 
                     let cuboid = ncollide::shape::Cuboid2::new(na::Vector2::new(width, height));
                     let mut rb = RigidBody::new_dynamic(cuboid, 1.0, 0.3, 0.6);
