@@ -18,7 +18,10 @@ pub struct App {
 impl App {
     pub fn new() -> Self {
         App {
-            window: WindowSettings::new("", [800, 600]).build().unwrap(),
+            window: WindowSettings::new("", [800, 600])
+                .samples(4)
+                .build()
+                .unwrap(),
 
             current_controller: Box::new(state::Game::new()),
         }

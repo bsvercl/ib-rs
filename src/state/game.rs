@@ -15,6 +15,15 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use view;
 
+const MAX_CUBOID_WIDTH: f64 = 10.0;
+const MIN_CUBOID_WIDTH: f64 = 0.1;
+
+const MAX_CUBOID_HEIGHT: f64 = 10.0;
+const MIN_CUBOID_HEIGHT: f64 = 0.1;
+
+const MAX_BALL_RADIUS: f64 = 10.0;
+const MIN_BALL_RADIUS: f64 = 0.1;
+
 #[derive(Copy, Clone, PartialEq)]
 #[allow(dead_code)]
 enum Action {
@@ -80,7 +89,7 @@ impl Game {
         world.add_rigid_body(rb);
 
         // Creating cuboids for pyramid
-        let num = 25;
+        let num = 35;
         let rad = 0.5;
         let shift = 2.5 * rad;
         let centerx = shift * (num as f64) / 2.0;
@@ -279,13 +288,7 @@ impl State for Game {
             match self.current_action {
                 Action::CreatingBall if self.action_step == 1 => {
                     let radius = na::distance(&self.first_click_world, &self.mouse_position_world);
-                    let radius = if radius < 0.1 {
-                        0.1
-                    } else if radius > 10.0 {
-                        10.0
-                    } else {
-                        radius
-                    };
+                    let radius = na::clamp(radius, MIN_BALL_RADIUS, MAX_BALL_RADIUS);
                     let dradius = radius * 2.0;
 
                     graphics::Ellipse::new(color::WHITE)
@@ -300,24 +303,41 @@ impl State for Game {
 
                 Action::CreatingCuboid if self.action_step == 1 => {
                     let width = self.mouse_position_world.x - self.first_click_world.x;
-                    let width = if na::abs(&width) < 0.1 {
-                        if width < 0.0 { -0.1 } else { 0.1 }
-                    } else if na::abs(&width) > 10.0 {
-                        if width < 0.0 { -10.0 } else { 10.0 }
+                    let width = if na::abs(&width) < MIN_CUBOID_WIDTH {
+                        if width < 0.0 {
+                            -MIN_CUBOID_WIDTH
+                        } else {
+                            MIN_CUBOID_WIDTH
+                        }
+                    } else if na::abs(&width) > MAX_CUBOID_WIDTH {
+                        if width < 0.0 {
+                            -MAX_CUBOID_WIDTH
+                        } else {
+                            MAX_CUBOID_WIDTH
+                        }
                     } else {
                         width
                     };
                     let dwidth = width * 2.0;
 
                     let height = self.mouse_position_world.y - self.first_click_world.y;
-                    let height = if na::abs(&width) < 0.1 {
-                        if height < 0.0 { -0.1 } else { 0.1 }
-                    } else if na::abs(&height) > 10.0 {
-                        if height < 0.0 { -10.0 } else { 10.0 }
+                    let height = if na::abs(&height) < MIN_CUBOID_HEIGHT {
+                        if height < 0.0 {
+                            -MIN_CUBOID_HEIGHT
+                        } else {
+                            MIN_CUBOID_HEIGHT
+                        }
+                    } else if na::abs(&height) > MAX_CUBOID_HEIGHT {
+                        if height < 0.0 {
+                            -MAX_CUBOID_HEIGHT
+                        } else {
+                            MAX_CUBOID_HEIGHT
+                        }
                     } else {
                         height
                     };
                     let dheight = height * 2.0;
+
 
                     graphics::Rectangle::new(color::WHITE).draw([-width, -height, dwidth, dheight],
                                                                 &c.draw_state,
@@ -405,13 +425,7 @@ impl State for Game {
                     self.action_step += 1;
                 } else if !pressed && self.action_step == 1 {
                     let radius = na::distance(&self.first_click_world, &self.mouse_position_world);
-                    let radius = if radius < 0.1 {
-                        0.1
-                    } else if radius > 10.0 {
-                        10.0
-                    } else {
-                        radius
-                    };
+                    let radius = na::clamp(radius, MIN_BALL_RADIUS, MAX_BALL_RADIUS);
                     if radius > 0.0 {
                         self.current_action = Action::None;
 
@@ -432,18 +446,18 @@ impl State for Game {
                     self.current_action = Action::None;
 
                     let width = self.mouse_position_world.x - self.first_click_world.x;
-                    let width = if width < 0.1 {
-                        0.1
-                    } else if width > 10.0 {
-                        10.0
+                    let width = if width < MIN_CUBOID_WIDTH {
+                        MIN_CUBOID_WIDTH
+                    } else if width > MAX_CUBOID_WIDTH {
+                        MAX_CUBOID_WIDTH
                     } else {
                         width
                     };
                     let height = self.mouse_position_world.y - self.first_click_world.y;
-                    let height = if height < 0.1 {
-                        0.1
-                    } else if height > 10.0 {
-                        10.0
+                    let height = if height < MIN_CUBOID_HEIGHT {
+                        MIN_CUBOID_HEIGHT
+                    } else if height > MAX_CUBOID_HEIGHT {
+                        MAX_CUBOID_HEIGHT
                     } else {
                         height
                     };
