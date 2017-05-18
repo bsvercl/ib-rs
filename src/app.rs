@@ -8,7 +8,6 @@ use piston::input::{Button, Input, Motion};
 use piston::window::{AdvancedWindow, WindowSettings};
 use state::{self, State};
 
-
 pub struct App {
     window: GlutinWindow,
 
