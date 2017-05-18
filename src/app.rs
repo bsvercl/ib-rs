@@ -9,6 +9,7 @@ use piston::window::{AdvancedWindow, WindowSettings};
 use state::{self, State};
 
 pub struct App {
+    // Main window
     window: GlutinWindow,
 
     current_controller: Box<State>,
@@ -24,10 +25,13 @@ impl App {
     }
 
     pub fn run(&mut self) {
+        // Frame counter
         let mut counter = FPSCounter::new();
 
+        // Graphics
         let mut gl = GlGraphics::new(OpenGL::V3_2);
 
+        // Main event loop
         let mut events = Events::new(EventSettings::new().ups(60));
         while let Some(e) = events.next(&mut self.window) {
             match e {

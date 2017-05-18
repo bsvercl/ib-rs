@@ -196,11 +196,11 @@ impl State for Game {
 
             if let Some(s) = shape.as_shape::<ncollide::shape::Ball2<f64>>() {
                 let radius = s.radius() + margin;
-                view::draw_ball(radius, &c, g);
+                view::draw_ball(radius, [1.0; 4], &c, g);
             } else if let Some(s) = shape.as_shape::<ncollide::shape::Cuboid2<f64>>() {
                 let width = s.half_extents().x + margin;
                 let height = s.half_extents().y + margin;
-                view::draw_cuboid(width, height, &c, g);
+                view::draw_cuboid(width, height, [1.0; 4], &c, g);
             }
         }
 
