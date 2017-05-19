@@ -1,27 +1,26 @@
 use color;
 use fps_counter::FPSCounter;
-use glutin_window::GlutinWindow;
-use graphics;
-use opengl_graphics::{OpenGL, GlGraphics};
-use piston::event_loop::{EventLoop, Events, EventSettings};
-use piston::input::{Button, Input, Motion};
-use piston::window::{AdvancedWindow, WindowSettings};
+use piston_window::{self, AdvancedWindow, Button, EventLoop, Input, Motion, PistonWindow,
+                    WindowSettings};
 use state::{self, State};
 
 pub struct App {
     // Main window
-    window: GlutinWindow,
+    window: PistonWindow,
 
     current_controller: Box<State>,
 }
 
 impl App {
     pub fn new() -> Self {
+        let mut window: PistonWindow = WindowSettings::new("", [800, 600])
+            .samples(4)
+            .build()
+            .unwrap();
+        window.set_ups(60);
+
         App {
-            window: WindowSettings::new("", [800, 600])
-                .samples(4)
-                .build()
-                .unwrap(),
+            window: window,
 
             current_controller: Box::new(state::Game::new()),
         }
@@ -31,22 +30,21 @@ impl App {
         // Frame counter
         let mut counter = FPSCounter::new();
 
-        // Graphics
-        let mut gl = GlGraphics::new(OpenGL::V3_2);
-
         // Main event loop
-        let mut events = Events::new(EventSettings::new().ups(60));
-        while let Some(e) = events.next(&mut self.window) {
+        while let Some(e) = self.window.next() {
             match e {
                 Input::Update(ref args) => {
                     self.current_controller.update(args.dt);
                 }
 
-                Input::Render(ref args) => {
-                    gl.draw(args.viewport(), |c, g| {
-                        graphics::clear(color::CORNFLOWER_BLUE, g);
-                        self.current_controller.render(&c, g);
-                    });
+                Input::Render(_) => {
+                    let ref mut current_controller = self.current_controller;
+                    self.window
+                        .draw_2d(&e, |c, g| {
+                            piston_window::clear(color::CORNFLOWER_BLUE, g);
+                            current_controller.render(&c, g);
+                        })
+                        .unwrap();
                     self.window.set_title(format!("fps: {}", counter.tick()));
                 }
 

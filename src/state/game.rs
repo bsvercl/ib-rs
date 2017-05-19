@@ -1,7 +1,6 @@
 use super::State;
 use camera::Camera;
 use color;
-use graphics::{self, Context, Transformed};
 use na;
 use ncollide::shape::{Ball2, Cuboid2, Plane2};
 use ncollide::world::CollisionGroups;
@@ -9,8 +8,7 @@ use nphysics2d::detection::constraint::Constraint;
 use nphysics2d::detection::joint::{Anchor, Fixed, Joint};
 use nphysics2d::object::{RigidBody, RigidBodyHandle, WorldObject};
 use nphysics2d::world::World;
-use opengl_graphics::GlGraphics;
-use piston::input::{Key, MouseButton};
+use piston_window::{self, Context, G2d, Key, MouseButton, Transformed};
 use std::cell::RefCell;
 use std::rc::Rc;
 use view;
@@ -116,7 +114,7 @@ impl Game {
             world: world,
             camera: Camera::new(800, 600),
 
-            paused: true,
+            paused: false,
 
             grabbed_object: None,
             grabbed_object_joint: None,
@@ -199,7 +197,7 @@ impl State for Game {
         self.trans_camera(dt);
     }
 
-    fn render(&self, c: &Context, g: &mut GlGraphics) {
+    fn render(&self, c: &Context, g: &mut G2d) {
         for rb in self.world.rigid_bodies() {
             let object = WorldObject::RigidBody(rb.clone());
             let bobject = object.borrow();
@@ -230,7 +228,7 @@ impl State for Game {
                     let world1 = self.camera.to_window(&na::Vector2::new(world1.x, world1.y));
                     let world2 = contact.world2;
                     let world2 = self.camera.to_window(&na::Vector2::new(world2.x, world2.y));
-                    graphics::Line::new([0.0, 1.0, 0.0, 1.0], 3.0)
+                    piston_window::Line::new([0.0, 1.0, 0.0, 1.0], 3.0)
                         .draw([world1.x, world1.y, world2.x, world2.y],
                               &c.draw_state,
                               c.transform,
@@ -239,16 +237,17 @@ impl State for Game {
                     let center = na::center(&na::Point2::new(world1.x, world1.y),
                                             &na::Point2::new(world2.x, world2.y));
                     let center_normal_depth = center + contact.normal * contact.depth;
-                    graphics::Line::new([0.0, 1.0, 0.0, 1.0], 3.0).draw([center.x,
-                                                                         center.y,
-                                                                         center_normal_depth.x,
-                                                                         center_normal_depth.y],
-                                                                        &c.draw_state,
-                                                                        c.transform,
-                                                                        g);
+                    piston_window::Line::new([0.0, 1.0, 0.0, 1.0], 3.0)
+                        .draw([center.x,
+                               center.y,
+                               center_normal_depth.x,
+                               center_normal_depth.y],
+                              &c.draw_state,
+                              c.transform,
+                              g);
 
                     let center_normal = center + contact.normal;
-                    graphics::Line::new([0.0, 1.0, 0.0, 1.0], 3.0)
+                    piston_window::Line::new([0.0, 1.0, 0.0, 1.0], 3.0)
                         .draw([center.x, center.y, center_normal.x, center_normal.y],
                               &c.draw_state,
                               c.transform,
@@ -265,7 +264,7 @@ impl State for Game {
                         self.camera
                             .to_window(&na::Vector2::new(anchor2_pos.x, anchor2_pos.y));
 
-                    graphics::Line::new([0.0, 0.0, 1.0, 1.0], 3.0)
+                    piston_window::Line::new([0.0, 0.0, 1.0, 1.0], 3.0)
                         .draw([anchor1_pos.x, anchor1_pos.y, anchor2_pos.x, anchor2_pos.y],
                               &c.draw_state,
                               c.transform,
@@ -282,7 +281,7 @@ impl State for Game {
                         self.camera
                             .to_window(&na::Vector2::new(anchor2_pos.x, anchor2_pos.y));
 
-                    graphics::Line::new([1.0, 0.0, 0.0, 1.0], 3.0)
+                    piston_window::Line::new([1.0, 0.0, 0.0, 1.0], 3.0)
                         .draw([anchor1_pos.x, anchor1_pos.y, anchor2_pos.x, anchor2_pos.y],
                               &c.draw_state,
                               c.transform,
@@ -299,7 +298,7 @@ impl State for Game {
                     let radius = na::clamp(radius, MIN_BALL_RADIUS, MAX_BALL_RADIUS);
                     let dradius = radius * 2.0;
 
-                    graphics::Ellipse::new(color::WHITE)
+                    piston_window::Ellipse::new(color::WHITE)
                         .resolution(16)
                         .draw([-radius, -radius, dradius, dradius],
                               &c.draw_state,
@@ -347,20 +346,20 @@ impl State for Game {
                     let dheight = height * 2.0;
 
 
-                    graphics::Rectangle::new(color::WHITE).draw([-width, -height, dwidth, dheight],
-                                                                &c.draw_state,
-                                                                c.trans(self.first_click.x,
-                                                                        self.first_click.y)
-                                                                    .zoom(self.camera.zoom())
-                                                                    .transform,
-                                                                g);
+                    piston_window::Rectangle::new(color::WHITE)
+                        .draw([-width, -height, dwidth, dheight],
+                              &c.draw_state,
+                              c.trans(self.first_click.x, self.first_click.y)
+                                  .zoom(self.camera.zoom())
+                                  .transform,
+                              g);
                 }
 
                 Action::CreatingBallInSocket => {
                     let radius = 5.0;
                     let dradius = radius * 2.0;
 
-                    graphics::Ellipse::new_border([0.0, 0.0, 1.0, 1.0], 0.3)
+                    piston_window::Ellipse::new_border([0.0, 0.0, 1.0, 1.0], 0.3)
                         .resolution(16)
                         .draw([-radius, -radius, dradius, dradius],
                               &c.draw_state,
@@ -371,7 +370,7 @@ impl State for Game {
                     let radius = 3.0;
                     let dradius = radius * 2.0;
 
-                    graphics::Ellipse::new_border([0.0, 0.0, 1.0, 1.0], 0.3)
+                    piston_window::Ellipse::new_border([0.0, 0.0, 1.0, 1.0], 0.3)
                         .resolution(16)
                         .draw([-radius, -radius, dradius, dradius],
                               &c.draw_state,
