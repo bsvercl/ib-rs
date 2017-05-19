@@ -204,7 +204,7 @@ impl State for Game {
             let object = WorldObject::RigidBody(rb.clone());
             let bobject = object.borrow();
             let transform = bobject.position();
-            let position = self.camera.from_local(&transform.translation.vector);
+            let position = self.camera.to_window(&transform.translation.vector);
             let rotation = transform.rotation.angle();
             let shape = bobject.shape().as_ref();
             let margin = bobject.margin();
@@ -227,11 +227,9 @@ impl State for Game {
             match *constraint {
                 Constraint::RBRB(_, _, ref contact) => {
                     let world1 = contact.world1;
-                    let world1 = self.camera
-                        .from_local(&na::Vector2::new(world1.x, world1.y));
+                    let world1 = self.camera.to_window(&na::Vector2::new(world1.x, world1.y));
                     let world2 = contact.world2;
-                    let world2 = self.camera
-                        .from_local(&na::Vector2::new(world2.x, world2.y));
+                    let world2 = self.camera.to_window(&na::Vector2::new(world2.x, world2.y));
                     graphics::Line::new([0.0, 1.0, 0.0, 1.0], 3.0)
                         .draw([world1.x, world1.y, world2.x, world2.y],
                               &c.draw_state,
@@ -261,11 +259,11 @@ impl State for Game {
                     let anchor1_pos = bis.borrow().anchor1_pos();
                     let anchor1_pos =
                         self.camera
-                            .from_local(&na::Vector2::new(anchor1_pos.x, anchor1_pos.y));
+                            .to_window(&na::Vector2::new(anchor1_pos.x, anchor1_pos.y));
                     let anchor2_pos = bis.borrow().anchor2_pos();
                     let anchor2_pos =
                         self.camera
-                            .from_local(&na::Vector2::new(anchor2_pos.x, anchor2_pos.y));
+                            .to_window(&na::Vector2::new(anchor2_pos.x, anchor2_pos.y));
 
                     graphics::Line::new([0.0, 0.0, 1.0, 1.0], 3.0)
                         .draw([anchor1_pos.x, anchor1_pos.y, anchor2_pos.x, anchor2_pos.y],
@@ -278,11 +276,11 @@ impl State for Game {
                     let anchor1_pos = f.borrow().anchor1_pos().translation.vector;
                     let anchor1_pos =
                         self.camera
-                            .from_local(&na::Vector2::new(anchor1_pos.x, anchor1_pos.y));
+                            .to_window(&na::Vector2::new(anchor1_pos.x, anchor1_pos.y));
                     let anchor2_pos = f.borrow().anchor2_pos().translation.vector;
                     let anchor2_pos =
                         self.camera
-                            .from_local(&na::Vector2::new(anchor2_pos.x, anchor2_pos.y));
+                            .to_window(&na::Vector2::new(anchor2_pos.x, anchor2_pos.y));
 
                     graphics::Line::new([1.0, 0.0, 0.0, 1.0], 3.0)
                         .draw([anchor1_pos.x, anchor1_pos.y, anchor2_pos.x, anchor2_pos.y],
