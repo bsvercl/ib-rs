@@ -7,7 +7,7 @@ authors = ["Brad Svercl <bradsvercl@gmail.com>"]
 piston = "0.32"
 piston2d-graphics = "0.21"
 piston2d-opengl_graphics = "0.43"
-pistoncore-glutin_window = "0.36"
+pistoncore-glutin_window = "0.37"
 
 rand = "0.3"
 fps_counter = "0.2"
