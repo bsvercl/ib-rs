@@ -20,6 +20,7 @@ impl App {
         App {
             window: WindowSettings::new("", [800, 600])
                 .samples(4)
+                .vsync(true)
                 .build()
                 .unwrap(),
 
